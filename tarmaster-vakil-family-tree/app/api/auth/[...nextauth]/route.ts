@@ -13,16 +13,9 @@ export const authOptions: NextAuthOptions = ({
 	pages: { signIn: "/signin", },
 	secret: process.env.NEXTAUTH_SECRET,
 	callbacks: {
-		async session({ session, token }) {
-			// Attach the user id to the session
-			if (session?.user && token.sub) session.user.id = token.sub;
-			return session;
-		},
-		async jwt({ token, user }) {
-			// If user is logging in for the first time
-			if (user) token.id = user.id;
-			return token;
-		},
+		// Attach the user id to the session
+		async session({ session, token }) { if (session?.user && token.sub) session.user.id = token.sub; return session; },
+		async jwt({ token, user }) { if (user) token.id = user.id; return token; }
 	},
 });
 

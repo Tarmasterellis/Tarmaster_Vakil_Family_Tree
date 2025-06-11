@@ -22,7 +22,7 @@ model User {
 	accounts      Account[]
 	sessions      Session[]
 
-	familyMembers FamilyMember[] @relation("UserCreatedMembers")
+	familyMembers FamilyNode[] @relation("UserCreatedMembers")
 }
 
 model Account {
@@ -61,26 +61,14 @@ model VerificationToken {
 	@@unique([identifier, token])
 }
 
-model FamilyMember {
-	id        String    @id @default(cuid())
-	name      String
-	dob       DateTime?
-	dod       DateTime?
-	gender    String
-	photo     String?
-	biography String?
+model FamilyNode {
+	id        String   @id @default(cuid())
+	parentId  String?  // To track hierarchy
+	data      Json     // Stores: first name, last name, birthday, avatar, gender
+	rels      Json     // Stores: spouses[], children[]
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
 
 	createdBy   User   @relation("UserCreatedMembers", fields: [createdById], references: [id])
 	createdById String
-
-	parentId String? // nullable for root members
-	parent   FamilyMember?  @relation("ParentChild", fields: [parentId], references: [id])
-	children FamilyMember[] @relation("ParentChild")
-
-	spouseId String?       @unique
-	spouse   FamilyMember? @relation("SpouseRelation", fields: [spouseId], references: [id])
-	spouseOf FamilyMember? @relation("SpouseRelation")
-
-	@@index([parentId])
-	@@index([spouseId])
 }
