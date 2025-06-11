@@ -22,8 +22,8 @@ export const Appbar = ({ mode, setMode }: { mode: string, setMode: React.Dispatc
 	const { data: session } = useSession();
 
 	const handleSigninOut = () => {
-		if(session?.user) { signOut(); }
-		else { signIn("google"); }
+		if(session?.user) { signOut({ callbackUrl: "/" }); }
+		else { signIn("google", { callbackUrl: "/dashboard" }); }
 	}
 
 	return (
@@ -34,14 +34,6 @@ export const Appbar = ({ mode, setMode }: { mode: string, setMode: React.Dispatc
 					<Typography variant="h6" component="div" sx={{ flexGrow: 1, fontSize: { xs: '0.875rem', sm: '1rem', md: '1.5rem' } }}> {`Tarmaster - Vakil Family Tree`}</Typography>
 				</div>
 				<div className={`flex pr-10 gap-5 items-center justify-end w-1/2`}>
-					{/* <Tooltip className={`flex pr-5`} title={ mode === "dark" ? "Let There Be Light...!" : "I was Born in Darkness" } placement="bottom" arrow followCursor>
-						<IconButton color="inherit" onClick={toggleColorMode}> { mode === 'dark' ? <LightModeRoundedIcon fontSize='medium' /> : <DarkModeRoundedIcon fontSize='medium' /> } </IconButton>
-					</Tooltip>
-					<Tooltip className={`flex pr-5`} title={  session?.user && session.user.name! ? `Welcome ${session.user.name!}` :  "Login / Sign-up With Google" } placement="bottom" arrow followCursor>
-						<IconButton color="inherit" onClick={handleSigninOut}>
-							{ session?.user ? <Avatar alt={session.user.name!} src={session.user.image ?? undefined} /> : <GoogleIcon fontSize="medium" /> }
-						</IconButton>
-					</Tooltip> */}
 					<Tooltip sx={{ display: 'flex', pr: { xs: 1 } }} title={mode === "dark" ? "Let There Be Light...!" : "I was Born in Darkness"} placement="bottom" arrow followCursor>
 						<IconButton color="inherit" onClick={toggleColorMode}>
 							{ mode === 'dark' ? <LightModeRoundedIcon sx={{ fontSize: { xs: 18, sm: 22, md: 28 } }} /> : <DarkModeRoundedIcon sx={{ fontSize: { xs: 18, sm: 22, md: 28 } }} /> }

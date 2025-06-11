@@ -1,9 +1,11 @@
+
 import { prisma } from '@/lib/prisma';
+import { authOptions } from '@/lib/authOptions';
 import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from 'next/server';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 // GET handler
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(req: Request) {
 	const session = await getServerSession(authOptions);
 
@@ -30,6 +32,7 @@ export async function POST(req: NextRequest) {
 
 	try {
 		const results = await Promise.all(
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			tree.map(async (node: any) => {
 				const existing = await prisma.familyNode.findUnique({
 					where: { id: node.id },

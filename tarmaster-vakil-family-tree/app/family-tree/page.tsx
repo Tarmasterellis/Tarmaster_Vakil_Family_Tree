@@ -52,6 +52,7 @@ export default function FamilyTree() {
 				.setSingleParentEmptyCard(true, { label: 'ADD' })
 				.setShowSiblingsOfMain(false)
 				.setOrientationVertical()
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				.setSortChildrenFunction((a: any, b: any) => a.data['birth year'] === b.data['birth year'] ? 0 : a.data['birth year'] > b.data['birth year'] ? 1 : -1);
 
 			chartRef.current = f3Chart;
@@ -98,6 +99,7 @@ export default function FamilyTree() {
 			if (res.ok)
 			{
 				const result = await res.json();
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				if (result.skipped > 0) alert(`⚠️ ${result.skipped} node(s) were not saved. Only the creator (${result.skippedDetails.map((d: any) => d.owner).join(', ')}) can edit them.`);
 				else setShowSavedToast(true);
 			}
