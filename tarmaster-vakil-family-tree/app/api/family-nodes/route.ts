@@ -6,7 +6,6 @@ import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET handler
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET() {
 	const session = await getServerSession(authOptions);
 

@@ -5,16 +5,21 @@ import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
+import Tooltip from '@mui/material/Tooltip';
 import { useSession } from "next-auth/react";
 import 'family-chart/styles/family-chart.css';
 import Snackbar from '@mui/material/Snackbar';
+import SaveIcon from '@mui/icons-material/Save';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import RefreshIcon from '@mui/icons-material/RestartAlt';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CircularProgress from '@mui/material/CircularProgress';
+import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded';
 import React, { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
 
 type FamilyDatum = { id: string; rels: { father: string | undefined; mother: string | undefined; spouses: string[]; children: string[] }; data: Record<string, string | number>; };
@@ -26,6 +31,7 @@ export default function FamilyTree() {
 	const [imageUrl, setImageUrl] = useState('');
 	const [uploading, setUploading] = useState(false);
 	const contRef = useRef<HTMLDivElement | null>(null);
+	const [rootId, setRootId] = useState<string | null>(null);
 	const [showSavedToast, setShowSavedToast] = useState(false);
 	const [uploadModalOpen, setUploadModalOpen] = useState(false);
 	const createChartRef = useRef<(data: FamilyDatum[]) => void>(() => {});
@@ -34,7 +40,6 @@ export default function FamilyTree() {
 	const saveTreeToDB = useCallback(async () => {
 		if (!chartRef.current) return;
 		setSaving(true);
-		// const rawData = chartRef.current.store.getData();
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const rawData = chartRef.current.store.getData().map((n: any) => ({
 			...n,
@@ -115,7 +120,9 @@ export default function FamilyTree() {
 				.setStyle('imageRect')
 				.setOnHoverPathToMain();
 
-			f3Chart.updateMainId('e3eca097-c4a9-49b5-a86f-b45faec32d0d');
+			// f3Chart.updateMainId('cmbt2jp7c0003z30vy8mlq737');
+			setRootId(processed[0]?.id); // Save the first node’s ID as root (or pick from metadata)
+			f3Chart.updateMainId(processed[0]?.id);
 
 			const f3EditTree = f3Chart.editTree()
 				.fixed(true)
@@ -136,12 +143,19 @@ export default function FamilyTree() {
 		};
 	}, [saveTreeToDB]);
 
+	const resetTreeView = () => {
+		if (chartRef.current && rootId) {
+			chartRef.current.updateMainId(rootId);
+			chartRef.current.updateTree();
+		}
+	};
+
 	useLayoutEffect(() => {
 		if (!contRef.current) return;
 
 		fetch('/api/family-nodes')
 			.then(res => res.json())
-			.then(data => createChartRef.current(data))
+			.then(data => createChartRef.current(data) ) 
 			.catch(err => {
 				console.error('Failed to load initial data:', err);
 				createChartRef.current([{ id: '0', rels: { father: undefined, mother: undefined, spouses: [], children: [] }, data: { "first name": "No Name", "last name": "No Surname", "birthday": 0, "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg", "gender": "", "email": "", "birth date": "", "birth month": "", "birth year": "", "occupation": "", "phone": "", "address": "", "marriage date": "", "marriage month": "", "marriage year": "", "death date": "", "death month": "", "death year": "" } }]);
@@ -168,9 +182,18 @@ export default function FamilyTree() {
 		<>
 			<div className="f3 f3-cont" id="FamilyChart" ref={contRef}></div>
 
-			<Stack hidden={ session?.user ? false : true } direction="row" spacing={2} style={{ position: 'fixed', bottom: 20, left: 20, zIndex: 9999 }}>
-				<Button variant="contained" color="primary" onClick={saveTreeToDB}> Save to DB </Button>
-				<Button variant="contained" color="secondary" onClick={() => setUploadModalOpen(true)}> Upload Avatar </Button>
+			<Stack hidden={!session?.user} direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" sx={{ position: 'fixed', top: 100, left: 10, zIndex: 9999, backgroundColor: 'background.paper', padding: 1, borderRadius: 2, boxShadow: 3, color: '#FFFFFF' }}> 
+				<Tooltip title="Save family tree to database" arrow>
+					<IconButton color="inherit" onClick={saveTreeToDB}> <SaveIcon /> </IconButton>
+				</Tooltip>
+
+				<Tooltip title="Upload an avatar image" arrow>
+					<IconButton color="inherit" onClick={() => setUploadModalOpen(true)}> <CloudUploadRoundedIcon /> </IconButton>
+				</Tooltip>
+
+				<Tooltip title="Reset view to root person" arrow>
+					<IconButton color="inherit" onClick={resetTreeView}> <RefreshIcon /> </IconButton>
+				</Tooltip>
 			</Stack>
 
 			{ saving && <div style={{ position: 'fixed', top: '50%', right: '50%', zIndex: 9999 }}> <CircularProgress size={30} /> </div> }
