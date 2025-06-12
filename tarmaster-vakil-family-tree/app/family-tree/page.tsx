@@ -13,12 +13,11 @@ import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import React, { useEffect, useRef, useState } from 'react';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CircularProgress from '@mui/material/CircularProgress';
+import React, { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
 
-
-type FamilyDatum = { id: string; rels: { spouses: string[]; children: string[] }; data: Record<string, string | number>; };
+type FamilyDatum = { id: string; rels: { father: string | undefined; mother: string | undefined; spouses: string[]; children: string[] }; data: Record<string, string | number>; };
 
 export default function FamilyTree() {
 	
@@ -29,27 +28,79 @@ export default function FamilyTree() {
 	const contRef = useRef<HTMLDivElement | null>(null);
 	const [showSavedToast, setShowSavedToast] = useState(false);
 	const [uploadModalOpen, setUploadModalOpen] = useState(false);
+	const createChartRef = useRef<(data: FamilyDatum[]) => void>(() => {});
 	const chartRef = useRef<ReturnType<typeof f3.createChart> | null>(null);
 
-	useEffect(() => {
-		if (!contRef.current) return;
+	const saveTreeToDB = useCallback(async () => {
+		if (!chartRef.current) return;
+		setSaving(true);
+		// const rawData = chartRef.current.store.getData();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const rawData = chartRef.current.store.getData().map((n: any) => ({
+			...n,
+			rels: {
+				father: n.rels?.father || undefined,
+				mother: n.rels?.mother || undefined,
+				spouses: Array.isArray(n.rels?.spouses) ? n.rels.spouses : [],
+				children: Array.isArray(n.rels?.children) ? n.rels.children : [],
+			},
+		}));
 
-		fetch('/api/family-nodes')
-			.then(res => res.json())
-			.then(data => createChart(data))
-			.catch(err => {
-				console.error('Failed to load initial data:', err);
-				 // fallback Dummy chart
-				createChart( [{ "id": "0", "rels": { "spouses": [], "children": [] }, "data": { "first name": "No Name", "last name": "No Surname", "birthday": 0, "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg", "gender": "", "email": "", "birth date": "", "birth month": "", "birth year": "", "occupation": "", "phone": "", "address": "", "marriage date": "", "marriage month": "", "marriage year": "", "death date": "", "death month": "", "death year": "" }}]);
+		try
+		{
+			const res = await fetch('/api/family-nodes', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(rawData),
 			});
 
-		function createChart(data: FamilyDatum[]) {
+			if (res.ok)
+			{
+				const result = await res.json();
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				if (result.skipped > 0) console.log(`⚠️ ${result.skipped} node(s) were not saved. Only the creator (${result.skippedDetails.map((d: any) => d.owner).join(', ')}) can edit them.`);
+				else setShowSavedToast(true);
+
+				// const latest = await fetch('/api/family-nodes').then(res => res.json());
+				// createChartRef.current(latest);
+				window.location.reload();
+			}
+			else alert('Save failed!');
+		}
+		catch (err) { alert('Save failed!'); console.error(err); }
+		finally { setSaving(false); }
+	}, []);
+
+	useEffect(() => {
+		createChartRef.current = (data: FamilyDatum[]) => {
+			// put your full createChart logic here
+			const processed = data.map(d => {
+				const fullName = `${d.data['first name'] || ''} ${d.data['last name'] || ''}`.trim();
+				const dob = [d.data['birth date'], d.data['birth month'], d.data['birth year']].filter(Boolean).join('-');
+				const marriage = [d.data['marriage date'], d.data['marriage month'], d.data['marriage year']].filter(Boolean).join('-');
+				const dod = [d.data['death date'], d.data['death month'], d.data['death year']].filter(Boolean).join('-');
+				return {
+					...d,
+					data: {
+						...d.data,
+						Name: `👤 ${fullName}`,
+						Email: `✉️ ${d.data.email || ''}`,
+						Phone: `📞 ${d.data.phone || ''}`,
+						DOB: `🎂 ${dob}`,
+						Marriage: `💍 ${marriage}`,
+						Address: `🏠 ${d.data.address || ''}`,
+						DOD: `🪦 ${dod}`,
+						Occupation: `💼 ${d.data.occupation || ''}`,
+					},
+				};
+			});
+
 			const f3Chart = f3
-				.createChart('#FamilyChart', data)
+				.createChart('#FamilyChart', processed)
 				.setTransitionTime(1000)
-				.setCardXSpacing(400)
-				.setCardYSpacing(400)
-				.setSingleParentEmptyCard(true, { label: 'ADD' })
+				.setCardXSpacing(600)
+				.setCardYSpacing(600)
+				.setSingleParentEmptyCard(false)
 				.setShowSiblingsOfMain(false)
 				.setOrientationVertical()
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,11 +109,13 @@ export default function FamilyTree() {
 			chartRef.current = f3Chart;
 
 			const f3Card = f3Chart.setCard(f3.CardHtml)
-				.setCardDisplay([ ['first name', 'last name'], ['phone'], ['email'], ['birth date', 'birth month', 'birth year'], ['marriage date', 'marriage month', 'marriage year'], ['address'], ['death date', 'death month', 'death year'] ])
-				.setCardDim({ width: 300, height: 200, img_width: 130, img_height: 200 })
+				.setCardDisplay([ ['Name'], ['Phone'], ['Email'], ['DOB'], ['Marriage'], ['Address'], ['DOD'], ['Occupation'] ])
+				.setCardDim({ width: 500, height: 300, img_width: 250, img_height: 280 })
 				.setMiniTree(true)
 				.setStyle('imageRect')
 				.setOnHoverPathToMain();
+
+			f3Chart.updateMainId('e3eca097-c4a9-49b5-a86f-b45faec32d0d');
 
 			const f3EditTree = f3Chart.editTree()
 				.fixed(true)
@@ -80,34 +133,20 @@ export default function FamilyTree() {
 			f3Chart.updateTree({ initial: true });
 			f3EditTree.open(f3Chart.getMainDatum());
 			f3Chart.updateTree({ initial: true });
-		}
-	}, []);
+		};
+	}, [saveTreeToDB]);
 
-	async function saveTreeToDB() {
-		if (!chartRef.current) return;
-		setSaving(true);
-		const rawData = chartRef.current.store.getData();
+	useLayoutEffect(() => {
+		if (!contRef.current) return;
 
-		try
-		{
-			const res = await fetch('/api/family-nodes', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(rawData),
+		fetch('/api/family-nodes')
+			.then(res => res.json())
+			.then(data => createChartRef.current(data))
+			.catch(err => {
+				console.error('Failed to load initial data:', err);
+				createChartRef.current([{ id: '0', rels: { father: undefined, mother: undefined, spouses: [], children: [] }, data: { "first name": "No Name", "last name": "No Surname", "birthday": 0, "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg", "gender": "", "email": "", "birth date": "", "birth month": "", "birth year": "", "occupation": "", "phone": "", "address": "", "marriage date": "", "marriage month": "", "marriage year": "", "death date": "", "death month": "", "death year": "" } }]);
 			});
-
-			if (res.ok)
-			{
-				const result = await res.json();
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				if (result.skipped > 0) alert(`⚠️ ${result.skipped} node(s) were not saved. Only the creator (${result.skippedDetails.map((d: any) => d.owner).join(', ')}) can edit them.`);
-				else setShowSavedToast(true);
-			}
-			else alert('Save failed!');
-		}
-		catch (err) { alert('Save failed!'); console.error(err); }
-		finally { setSaving(false); }
-	}
+	}, []);
 
 	const handleUpload = async (file: File) => {
 		setUploading(true);
@@ -134,7 +173,7 @@ export default function FamilyTree() {
 				<Button variant="contained" color="secondary" onClick={() => setUploadModalOpen(true)}> Upload Avatar </Button>
 			</Stack>
 
-			{ saving && <div style={{ position: 'fixed', top: 10, right: 10, zIndex: 9999 }}> <CircularProgress size={28} /> </div> }
+			{ saving && <div style={{ position: 'fixed', top: '50%', right: '50%', zIndex: 9999 }}> <CircularProgress size={30} /> </div> }
 
 			<Snackbar open={showSavedToast} autoHideDuration={3000} onClose={() => setShowSavedToast(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
 				<Alert severity="success" onClose={() => setShowSavedToast(false)} variant="filled">
@@ -160,7 +199,7 @@ export default function FamilyTree() {
 					}
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => setUploadModalOpen(false)}>Close</Button>
+					<Button onClick={() => { setUploadModalOpen(false); setImageUrl(''); }}>Close</Button>
 				</DialogActions>
 			</Dialog>
 		</>
