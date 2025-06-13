@@ -22,7 +22,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded';
 import React, { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
 
-type FamilyDatum = { id: string; rels: { father: string | undefined; mother: string | undefined; spouses: string[]; children: string[] }; data: Record<string, string | number>; };
+type FamilyDatum = { id: string; rels: { father?: string; mother?: string; spouses?: string[]; children?: string[] }; data: Record<string, string | number>; };
 
 export default function FamilyTree() {
 	
@@ -41,15 +41,7 @@ export default function FamilyTree() {
 		if (!chartRef.current) return;
 		setSaving(true);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const rawData = chartRef.current.store.getData().map((n: any) => ({
-			...n,
-			rels: {
-				father: n.rels?.father || undefined,
-				mother: n.rels?.mother || undefined,
-				spouses: Array.isArray(n.rels?.spouses) ? n.rels.spouses : [],
-				children: Array.isArray(n.rels?.children) ? n.rels.children : [],
-			},
-		}));
+		const rawData = chartRef.current.store.getData().map((n: any) => ({ ...n, rels: { father: n.rels?.father || undefined, mother: n.rels?.mother || undefined, spouses: Array.isArray(n.rels?.spouses) ? n.rels.spouses : [], children: Array.isArray(n.rels?.children) ? n.rels.children : [] } }));
 
 		try
 		{
@@ -66,8 +58,6 @@ export default function FamilyTree() {
 				if (result.skipped > 0) console.log(`⚠️ ${result.skipped} node(s) were not saved. Only the creator (${result.skippedDetails.map((d: any) => d.owner).join(', ')}) can edit them.`);
 				else setShowSavedToast(true);
 
-				// const latest = await fetch('/api/family-nodes').then(res => res.json());
-				// createChartRef.current(latest);
 				window.location.reload();
 			}
 			else alert('Save failed!');
@@ -120,9 +110,8 @@ export default function FamilyTree() {
 				.setStyle('imageRect')
 				.setOnHoverPathToMain();
 
-			// f3Chart.updateMainId('cmbt2jp7c0003z30vy8mlq737');
-			setRootId(processed[0]?.id); // Save the first node’s ID as root (or pick from metadata)
-			f3Chart.updateMainId(processed[0]?.id);
+			f3Chart.updateMainId('cmbt2jp7c0003z30vy8mlq737');
+			setRootId('cmbt2jp7c0003z30vy8mlq737');
 
 			const f3EditTree = f3Chart.editTree()
 				.fixed(true)
@@ -154,8 +143,8 @@ export default function FamilyTree() {
 		if (!contRef.current) return;
 
 		fetch('/api/family-nodes')
-			.then(res => res.json())
-			.then(data => createChartRef.current(data) ) 
+			.then(res => res.json() )
+			.then(data => createChartRef.current(data) )
 			.catch(err => {
 				console.error('Failed to load initial data:', err);
 				createChartRef.current([{ id: '0', rels: { father: undefined, mother: undefined, spouses: [], children: [] }, data: { "first name": "No Name", "last name": "No Surname", "birthday": 0, "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg", "gender": "", "email": "", "birth date": "", "birth month": "", "birth year": "", "occupation": "", "phone": "", "address": "", "marriage date": "", "marriage month": "", "marriage year": "", "death date": "", "death month": "", "death year": "" } }]);

@@ -5,6 +5,9 @@ import { authOptions } from '@/lib/authOptions';
 import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from 'next/server';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FamilyNodeInput = { id: string; data: Record<string, any>; [key: string]: any; };
+
 // GET handler
 export async function GET() {
 	const session = await getServerSession(authOptions);
@@ -16,169 +19,170 @@ export async function GET() {
 	return Response.json(familyNodes);
 }
 
-// POST handler
+// Post handler
 export async function POST(req: NextRequest) {
 	const session = await getServerSession(authOptions);
-	if (!session || !session.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-	let tree = [];
-	try {
-		tree = await req.json();
-		console.log('Received tree:', tree);
-	} catch (err) {
-		console.error('❌ Invalid JSON:', err);
-		return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+	if (!session || !session.user?.id) {
+		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
-	try {
-		const results = await Promise.all(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			tree.map(async (node: any) => {
-				// Skip if data is not an object or empty
-				if (!node.data || typeof node.data !== 'object' || Array.isArray(node.data)) {
-					console.log(`⏭️ Skipped node ${node.id} - invalid or missing data`);
-					return { skipped: true, nodeId: node.id, reason: 'Invalid or missing data' };
-				}
+	const userId = session.user.id;
+	const body = await req.json();
 
-				const data = node.data as Prisma.JsonObject;
+	if (!Array.isArray(body)) {
+		return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+	}
 
-				const isEmpty = Object.values(data).every(
-					val => val === '' || val === null || val === undefined || (typeof val === 'string' && val.trim() === '')
-				);
+	// ✅ Filter meaningful nodes *before* any relationship handling
+	const cleanedData = filterMeaningfulFamilyNodes(body);
 
-				const hasOnlyGender =
-					Object.keys(data).length === 1 &&
-					(data['gender'] === 'M' || data['gender'] === 'F');
+	// ✅ Build a Set of valid node IDs — we'll use it to validate relationships too
+	const validNodeIds = new Set(cleanedData.map((node) => node.id));
 
-				if (isEmpty || hasOnlyGender) {
-					console.log(`⏭️ Skipped node ${node.id} - empty or only gender`);
-					return { skipped: true, nodeId: node.id, reason: 'Empty data or only gender' };
-				}
+	// Queue to apply reverse relationships after all nodes are saved
+	const reverseRelsQueue: {
+		nodeId: string;
+		rels: {
+			father?: string;
+			mother?: string;
+			spouses?: string[];
+			children?: string[];
+		};
+	}[] = [];
 
-				const rels = {
-					father: typeof node.rels?.father === 'string' ? node.rels.father : undefined,
-					mother: typeof node.rels?.mother === 'string' ? node.rels.mother : undefined,
-					spouses: Array.isArray(node.rels?.spouses) ? node.rels.spouses : [],
-					children: Array.isArray(node.rels?.children) ? node.rels.children : [],
-				};
+	for (const node of cleanedData) {
+		const { id, data, rels = {} } = node;
 
-				const saved = await prisma.familyNode.upsert({
-					where: { id: node.id },
-					create: {
-						id: node.id,
-						parentId: node.parentId ?? null,
-						data: node.data,
-						rels: node.rels,
-						createdBy: {
-							connectOrCreate: {
-								where: { id: session.user.id },
-								create: {
-									id: session.user.id,
-									name: session.user.name || 'unknown@unknown.com',
-									email: session.user.email || 'unknown@unknown.com',
-									image:
-										session.user.image ||
-										'https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg',
-								},
-							},
-						},
-					},
-					update: {
-						parentId: node.parentId ?? null,
-						data: node.data,
-						rels: rels,
-					},
-				});
+		// Only allow rels that point to *valid* nodes
+		const cleanedRels = {
+			...(rels.father && validNodeIds.has(rels.father) ? { father: rels.father } : {}),
+			...(rels.mother && validNodeIds.has(rels.mother) ? { mother: rels.mother } : {}),
+			...(Array.isArray(rels.spouses)
+				? { spouses: rels.spouses.filter((sid: string) => validNodeIds.has(sid)) }
+				: {}),
+			...(Array.isArray(rels.children)
+				? { children: rels.children.filter((cid: string) => validNodeIds.has(cid)) }
+				: {}),
+		};
 
-				await cleanupEmptyNode(node.id);
-
-				return { saved };
-			})
-		);
-
-		const savedCount = results.filter(r => r && r.saved).length;
-		const skippedNodes = results.filter(r => r && r.skipped);
-
-		return NextResponse.json({
-			message: 'Saved with restrictions',
-			saved: savedCount,
-			skipped: skippedNodes.length,
-			skippedDetails: skippedNodes,
+		await prisma.familyNode.upsert({
+			where: { id },
+			create: {
+				id,
+				parentId: cleanedRels.father ?? null,
+				data,
+				rels: cleanedRels,
+				createdById: userId,
+			},
+			update: {
+				parentId: cleanedRels.father ?? null,
+				data,
+				rels: cleanedRels,
+			},
 		});
-	} catch (err) {
-		console.error('❌ Prisma Error:', err);
-		return NextResponse.json({ error: 'Failed to save nodes' }, { status: 500 });
+
+		reverseRelsQueue.push({ nodeId: id, rels: cleanedRels });
 	}
+
+	for (const { nodeId, rels } of reverseRelsQueue) {
+		await applyReverseRelationships(nodeId, rels);
+	}
+
+	return NextResponse.json({ status: 'success', count: cleanedData.length });
 }
 
 
-async function cleanupEmptyNode(nodeId: string) {
-	const node = await prisma.familyNode.findUnique({ where: { id: nodeId } });
+async function applyReverseRelationships(nodeId: string, rels: { father?: string; mother?: string; spouses?: string[]; children?: string[] }) {
+	if (!nodeId) return;
 
-	if (!node || typeof node.data !== 'object' || Array.isArray(node.data)) return;
-
-	const data = node.data as Prisma.JsonObject;
-
-	const isEmpty = Object.values(data).every(
-		value => value === '' || value === null || (typeof value === 'string' && value.trim() === '')
-	);
-
-	const hasOnlyGender =
-		Object.keys(data).length === 1 &&
-		(data['gender'] === 'M' || data['gender'] === 'F');
-
-	if (isEmpty || hasOnlyGender) {
-		await prisma.familyNode.delete({ where: { id: nodeId } });
-		console.log(`🗑️ Deleted node ${nodeId} due to empty data or only gender.`);
-		return;
+	// Add this node as a child to father & mother
+	const parentUpdates = [];
+	if (rels.father) {
+		parentUpdates.push(addChildRelation(rels.father, nodeId));
+	}
+	if (rels.mother) {
+		parentUpdates.push(addChildRelation(rels.mother, nodeId));
 	}
 
-	// Clean invalid relationship references
-	// if (typeof node.rels === 'object' && !Array.isArray(node.rels)) {
-	if (node.rels && typeof node.rels === 'object' && !Array.isArray(node.rels)) {
-		const rels = node.rels as Prisma.JsonObject;
-		const validRels: Prisma.JsonObject = {
-			spouses: [],
-			children: [],
-		};
+	// Add this node as a spouse to its spouses
+	if (Array.isArray(rels.spouses)) {
+		for (const spouseId of rels.spouses) {
+			parentUpdates.push(addSpouseRelation(spouseId, nodeId));
+		}
+	}
 
-		const idsToCheck: string[] = [];
+	await Promise.all(parentUpdates);
+}
 
-		if (typeof rels.father === 'string') idsToCheck.push(rels.father);
-		if (typeof rels.mother === 'string') idsToCheck.push(rels.mother);
-		if (Array.isArray(rels.spouses)) idsToCheck.push(...rels.spouses as string[]);
-		if (Array.isArray(rels.children)) idsToCheck.push(...rels.children as string[]);
+async function addChildRelation(parentId: string, childId: string) {
+	const parent = await prisma.familyNode.findUnique({ where: { id: parentId } });
+	if (!parent) return;
 
-		const existingNodes = await prisma.familyNode.findMany({
-			where: { id: { in: idsToCheck } },
-			select: { id: true },
+	const rels = (parent.rels || {}) as Prisma.JsonObject;
+
+	let children: string[] = [];
+
+	if (Array.isArray(rels.children)) {
+		// Type-safe filter: only keep valid strings
+		children = rels.children.filter((c): c is string => typeof c === 'string' && c.trim() !== '');
+	} else if (typeof rels.children === 'string' && rels.children.trim() !== '') {
+		children = [rels.children];
+	}
+
+	if (!children.includes(childId)) {
+		const updatedChildren = Array.from(new Set([...children, childId]));
+
+		await prisma.familyNode.update({
+			where: { id: parentId },
+			data: {
+				rels: {
+					...rels,
+					children: updatedChildren,
+				},
+			},
 		});
-		const existingIds = new Set(existingNodes.map(n => n.id));
-
-		if (typeof rels.father === 'string' && existingIds.has(rels.father)) {
-			validRels.father = rels.father;
-		}
-		if (typeof rels.mother === 'string' && existingIds.has(rels.mother)) {
-			validRels.mother = rels.mother;
-		}
-		if (Array.isArray(rels.spouses)) {
-			validRels.spouses = rels.spouses.filter((id: unknown) => typeof id === 'string' && existingIds.has(id));
-		}
-		if (Array.isArray(rels.children)) {
-			validRels.children = rels.children.filter((id: unknown) => typeof id === 'string' && existingIds.has(id));
-		}
-
-		// Ensure empty arrays are preserved for spouses/children
-		if (!Array.isArray(validRels.spouses)) validRels.spouses = [];
-		if (!Array.isArray(validRels.children)) validRels.children = [];
-
-		// Only update if different
-		if (JSON.stringify(validRels) !== JSON.stringify(rels)) {
-			await prisma.familyNode.update({
-				where: { id: nodeId },
-				data: { rels: validRels },
-			});
-			console.log(`🔧 Cleaned invalid rels from node ${nodeId}`);
-		}
 	}
+}
+
+async function addSpouseRelation(spouseId: string, currentId: string) {
+	const node = await prisma.familyNode.findUnique({ where: { id: spouseId } });
+	if (!node) return;
+
+	const rels = (node.rels || {}) as Prisma.JsonObject;
+	const spouses = Array.isArray(rels.spouses) ? [...rels.spouses] : [];
+
+	if (!spouses.includes(currentId)) {
+		spouses.push(currentId);
+		await prisma.familyNode.update({
+			where: { id: spouseId },
+			data: {
+				rels: {
+					...rels,
+					spouses,
+				},
+			},
+		});
+	}
+}
+
+/**
+ * Removes nodes where `data` only contains a `gender` field (M/F/Other)
+ */
+export function filterMeaningfulFamilyNodes(nodes: FamilyNodeInput[]): FamilyNodeInput[] {
+	return nodes.filter((node) => {
+		if (!node.data || typeof node.data !== 'object') return false;
+
+		const keys = Object.keys(node.data);
+		// Only one key and it's 'gender'
+		if (keys.length === 1 && keys[0] === 'gender') return false;
+
+		// If all other keys are empty or whitespace and only gender is present
+		const hasMeaningfulData = keys.some((key) => {
+		if (key === 'gender') return false;
+			const value = node.data[key];
+			return typeof value === 'string' && value.trim() !== '';
+		});
+
+		return hasMeaningfulData;
+	});
 }
