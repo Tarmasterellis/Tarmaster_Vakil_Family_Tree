@@ -25,17 +25,31 @@ import React, { useCallback, useEffect, useRef, useState, useLayoutEffect } from
 type FamilyDatum = { id: string; rels: { father?: string; mother?: string; spouses?: string[]; children?: string[] }; data: Record<string, string | number>; };
 
 export default function FamilyTree() {
-	
+
+	const key: string = 'color-mode';
 	const { data: session } = useSession();
+	const userName = session?.user?.name;
 	const [saving, setSaving] = useState(false);
 	const [imageUrl, setImageUrl] = useState('');
 	const [uploading, setUploading] = useState(false);
 	const contRef = useRef<HTMLDivElement | null>(null);
-	const [rootId, setRootId] = useState<string | null>(null);
+	const [mode, setMode] = useState<string | null>(null);
+	const [rootId, setRootId] = useState<string | null>();
+	const [allData, setAllData] = useState<FamilyDatum[]>([]);
 	const [showSavedToast, setShowSavedToast] = useState(false);
 	const [uploadModalOpen, setUploadModalOpen] = useState(false);
 	const createChartRef = useRef<(data: FamilyDatum[]) => void>(() => {});
 	const chartRef = useRef<ReturnType<typeof f3.createChart> | null>(null);
+
+		// a loop over allData to check if the userName Exists in the data, if yes, then get the id, else do nothing
+	useEffect(() => {
+		if (allData.length > 0) {
+			allData.forEach(data => {
+				setRootId((data.data['first name'].toString().toLowerCase() === userName?.split(' ')[0].toString().toLowerCase()) ? data.id : 'cmbt2jp7c0003z30vy8mlq737');
+				// (data.data['first name'].toString().toLowerCase() === userName?.split(' ')[0].toString().toLowerCase()) ? setRootId(data.id) : setRootId('cmbt2jp7c0003z30vy8mlq737');
+			});
+		}
+	}, [allData, userName]);
 
 	const saveTreeToDB = useCallback(async () => {
 		if (!chartRef.current) return;
@@ -68,12 +82,13 @@ export default function FamilyTree() {
 
 	useEffect(() => {
 		createChartRef.current = (data: FamilyDatum[]) => {
+			const formatDate = (day?: string, month?: string, year?: string) => { return [day, month, year].filter(Boolean).join('-') || 'N/A'; };
 			// put your full createChart logic here
 			const processed = data.map(d => {
 				const fullName = `${d.data['first name'] || ''} ${d.data['last name'] || ''}`.trim();
-				const dob = [d.data['birth date'], d.data['birth month'], d.data['birth year']].filter(Boolean).join('-');
-				const marriage = [d.data['marriage date'], d.data['marriage month'], d.data['marriage year']].filter(Boolean).join('-');
-				const dod = [d.data['death date'], d.data['death month'], d.data['death year']].filter(Boolean).join('-');
+				const dob = formatDate(d.data['birth date'].toString(), d.data['birth month'].toString(), d.data['birth year'].toString())
+				const marriage = formatDate(d.data['marriage date'].toString(), d.data['marriage month'].toString(), d.data['marriage year'].toString())
+				const dod = formatDate(d.data['death date'].toString(), d.data['death month'].toString(), d.data['death year'].toString())
 				return {
 					...d,
 					data: {
@@ -110,15 +125,15 @@ export default function FamilyTree() {
 				.setStyle('imageRect')
 				.setOnHoverPathToMain();
 
-			f3Chart.updateMainId('cmbt2jp7c0003z30vy8mlq737');
-			setRootId('cmbt2jp7c0003z30vy8mlq737');
+			f3Chart.updateMainId(rootId);
+			// setRootId('cmbt2jp7c0003z30vy8mlq737');
 
 			const f3EditTree = f3Chart.editTree()
 				.fixed(true)
 				.setFields([ 'first name', 'last name', 'email', 'gender', 'avatar', 'birth date', 'birth month', 'birth year', 'occupation', 'phone', 'address', 'marriage date', 'marriage month', 'marriage year', 'death date', 'death month', 'death year' ])
 				.setEditFirst(true);
-
-			f3EditTree.setEdit({ onUpdate: () => saveTreeToDB() });
+			
+				f3EditTree.setEdit({ onUpdate: () => saveTreeToDB() });
 
 			f3Card.setOnCardClick((e: MouseEvent, d: FamilyDatum) => {
 				f3EditTree.open(d);
@@ -130,7 +145,7 @@ export default function FamilyTree() {
 			f3EditTree.open(f3Chart.getMainDatum());
 			f3Chart.updateTree({ initial: true });
 		};
-	}, [saveTreeToDB]);
+	}, [saveTreeToDB, rootId, setRootId, allData, setAllData]);
 
 	const resetTreeView = () => {
 		if (chartRef.current && rootId) {
@@ -144,7 +159,7 @@ export default function FamilyTree() {
 
 		fetch('/api/family-nodes')
 			.then(res => res.json() )
-			.then(data => createChartRef.current(data) )
+			.then(data => { createChartRef.current(data); setAllData(data); } )
 			.catch(err => {
 				console.error('Failed to load initial data:', err);
 				createChartRef.current([{ id: '0', rels: { father: undefined, mother: undefined, spouses: [], children: [] }, data: { "first name": "No Name", "last name": "No Surname", "birthday": 0, "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg", "gender": "", "email": "", "birth date": "", "birth month": "", "birth year": "", "occupation": "", "phone": "", "address": "", "marriage date": "", "marriage month": "", "marriage year": "", "death date": "", "death month": "", "death year": "" } }]);
@@ -167,11 +182,38 @@ export default function FamilyTree() {
 
 	function copyToClipboard(text: string) { navigator.clipboard.writeText(text); }
 
+	useEffect(() => {
+		// Check if we're in the browser
+		if (typeof window === 'undefined') return;
+
+		const updateValue = () => {
+			const currentValue = localStorage.getItem(key);
+			setMode(currentValue);
+		};
+
+		updateValue(); // Initial read
+
+		// Listen for cross-tab updates
+		const handleStorage = (e: StorageEvent) => {
+			if (e.key === key) updateValue();
+		};
+		window.addEventListener('storage', handleStorage);
+
+		// Optional: Poll for same-tab updates
+		const interval = setInterval(updateValue, 500);
+
+		return () => {
+			window.removeEventListener('storage', handleStorage);
+			clearInterval(interval);
+		};
+	}, [key]);
+
+
 	return (
 		<>
 			<div className="f3 f3-cont" id="FamilyChart" ref={contRef}></div>
 
-			<Stack hidden={!session?.user} direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" sx={{ position: 'fixed', top: 100, left: 10, zIndex: 9999, backgroundColor: 'background.paper', padding: 1, borderRadius: 2, boxShadow: 3, color: '#FFFFFF' }}> 
+			<Stack className={`${mode === 'dark' ? '!bg-[#3c4148] !text-white' : '!bg-[#212121] !text-white'}`} hidden={!session?.user} direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" sx={{ position: 'fixed', top: 100, left: 10, zIndex: 9999, padding: 1, borderRadius: 2, boxShadow: 3 }}>
 				<Tooltip title="Save family tree to database" arrow>
 					<IconButton color="inherit" onClick={saveTreeToDB}> <SaveIcon /> </IconButton>
 				</Tooltip>

@@ -6,6 +6,7 @@ import { signIn, signOut } from "next-auth/react";
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import GoogleIcon from '@mui/icons-material/Google';
+import { Notifications } from "@/app/components/Notifications";
 import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom';
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
@@ -38,6 +39,9 @@ export const Appbar = ({ mode, setMode }: { mode: string, setMode: React.Dispatc
 						<IconButton color="inherit" onClick={toggleColorMode}>
 							{ mode === 'dark' ? <LightModeRoundedIcon sx={{ fontSize: { xs: 18, sm: 22, md: 28 } }} /> : <DarkModeRoundedIcon sx={{ fontSize: { xs: 18, sm: 22, md: 28 } }} /> }
 						</IconButton>
+					</Tooltip>
+					<Tooltip sx={{ display: 'flex', pr: { xs: 1 } }} title={'Notifications...!'} placement="bottom" arrow followCursor>
+						<Notifications />
 					</Tooltip>
 					<Tooltip sx={{ display: 'flex', pr: { xs: 1 } }} title={ session?.user?.name ? `Welcome ${session.user.name}` : "Login / Sign-up With Google" } placement="bottom" arrow followCursor>
 						<IconButton color="inherit" onClick={handleSigninOut}>
