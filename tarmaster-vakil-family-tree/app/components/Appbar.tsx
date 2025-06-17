@@ -40,9 +40,12 @@ export const Appbar = ({ mode, setMode }: { mode: string, setMode: React.Dispatc
 							{ mode === 'dark' ? <LightModeRoundedIcon sx={{ fontSize: { xs: 18, sm: 22, md: 28 } }} /> : <DarkModeRoundedIcon sx={{ fontSize: { xs: 18, sm: 22, md: 28 } }} /> }
 						</IconButton>
 					</Tooltip>
-					<Tooltip sx={{ display: 'flex', pr: { xs: 1 } }} title={'Notifications...!'} placement="bottom" arrow followCursor>
-						<Notifications />
-					</Tooltip>
+					{
+						session?.user?.name &&
+						<Tooltip sx={{ display: 'flex', pr: { xs: 1 } }} title={'Notifications...!'} placement="bottom" arrow followCursor>
+							<Notifications />
+						</Tooltip>
+					}
 					<Tooltip sx={{ display: 'flex', pr: { xs: 1 } }} title={ session?.user?.name ? `Welcome ${session.user.name}` : "Login / Sign-up With Google" } placement="bottom" arrow followCursor>
 						<IconButton color="inherit" onClick={handleSigninOut}>
 							{ session?.user ? <Avatar alt={session.user.name!} src={session.user.image ?? undefined} sx={{ width: { xs: 24, sm: 32, md: 40 }, height: { xs: 24, sm: 32, md: 40 } }} /> : <GoogleIcon sx={{ fontSize: { xs: 18, sm: 24, md: 28 } }} /> }
