@@ -41,14 +41,13 @@ export default function FamilyTree() {
 	const createChartRef = useRef<(data: FamilyDatum[]) => void>(() => {});
 	const chartRef = useRef<ReturnType<typeof f3.createChart> | null>(null);
 
-		// a loop over allData to check if the userName Exists in the data, if yes, then get the id, else do nothing
 	useEffect(() => {
-		if (allData.length > 0) {
-			allData.forEach(data => {
-				setRootId((data.data['first name'].toString().toLowerCase() === userName?.split(' ')[0].toString().toLowerCase()) ? data.id : 'cmbt2jp7c0003z30vy8mlq737');
-				// (data.data['first name'].toString().toLowerCase() === userName?.split(' ')[0].toString().toLowerCase()) ? setRootId(data.id) : setRootId('cmbt2jp7c0003z30vy8mlq737');
-			});
-		}
+		if (!allData.length || !userName) return;
+
+		const userFirstName = userName.split(' ')[0].toLowerCase();
+		const match = allData.find(data => data?.data && data.data['first name']?.toString().toLowerCase() === userFirstName);
+
+		setRootId(match?.id || 'cmbt2jp7c0003z30vy8mlq737');
 	}, [allData, userName]);
 
 	const saveTreeToDB = useCallback(async () => {
@@ -125,6 +124,7 @@ export default function FamilyTree() {
 				.setStyle('imageRect')
 				.setOnHoverPathToMain();
 
+			console.log(rootId);
 			f3Chart.updateMainId(rootId);
 			// setRootId('cmbt2jp7c0003z30vy8mlq737');
 
@@ -145,7 +145,7 @@ export default function FamilyTree() {
 			f3EditTree.open(f3Chart.getMainDatum());
 			f3Chart.updateTree({ initial: true });
 		};
-	}, [saveTreeToDB, rootId, setRootId, allData, setAllData]);
+	}, [saveTreeToDB, rootId]);
 
 	const resetTreeView = () => {
 		if (chartRef.current && rootId) {

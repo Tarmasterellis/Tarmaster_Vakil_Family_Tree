@@ -13,3 +13,5 @@ body { background: var(--background); color: var(--foreground); font-family: Ari
 .f3-radio-group { display: none !important; }
 
 .f3-delete-btn { display: none !important; }
+
+.hide-scrollbar::-webkit-scrollbar { display: none; }
