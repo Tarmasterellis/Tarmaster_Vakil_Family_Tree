@@ -120,13 +120,13 @@ export default function FamilyTree() {
 	const closeMenu = () => setAnchorEl(null);
 	
 	useEffect(() => {
-		if (!allData.length || !userName || rootId) return;
+		if (!allData.length || !userName) return;
 
 		const userFirstName = userName.split(' ')[0].toLowerCase();
 		const match = allData.find(data => data?.data && data.data['first name']?.toString().toLowerCase() === userFirstName);
 
 		setRootId(match?.id || 'cmbt2jp7c0003z30vy8mlq737');
-	}, [allData, userName, rootId]);
+	}, [allData, userName]);
 
 	const saveTreeToDB = useCallback(async () => {
 		if (!chartRef.current) return;
@@ -215,15 +215,22 @@ export default function FamilyTree() {
 			
 				f3EditTree.setEdit({ onUpdate: () => saveTreeToDB() });
 
+			// f3Card.setOnCardClick((e: MouseEvent, d: FamilyDatum) => {
+			// 	if (f3EditTree.isAddingRelative()) return;
+			// 	f3EditTree.open(d);
+			// 	f3Card.onCardClickDefault(e, d);
+			// });
+
 			f3Card.setOnCardClick((e: MouseEvent, d: FamilyDatum) => {
-				f3EditTree.open(d);
-				if (f3EditTree.isAddingRelative()) return;
-				f3Card.onCardClickDefault(e, d);
+				if (!f3EditTree.isAddingRelative()) {
+					f3EditTree.open(d); // Only open once on actual user click
+					f3Card.onCardClickDefault(e, d);
+				}
 			});
 
 			f3Chart.updateTree({ initial: true });
 		};
-	}, [saveTreeToDB, rootId, getProgenyDepth, getAncestryDepth]);
+	}, [saveTreeToDB, getProgenyDepth, getAncestryDepth]);
 
 	const resetTreeView = () => {
 		if (chartRef.current && rootId) {
@@ -316,7 +323,7 @@ export default function FamilyTree() {
 			// Redraw the chart
 			chartRef.current.updateTree({ initial: true });
 		}
-	}, [allData, rootId]);
+	}, [allData]);
 
 	useEffect(() => {
 		if (allData.length && rootId && createChartRef.current) {
@@ -324,14 +331,14 @@ export default function FamilyTree() {
 			// Redraw the chart
 			chartRef.current.updateTree({ initial: true });
 		}
-	}, [rootId, allData]);
+	}, [allData]);
 
 
 	return (
 		<>
 			<div className="f3 f3-cont" id="FamilyChart" ref={contRef}></div>
 
-			<Stack className={`${mode === 'dark' ? '!bg-[#3c4148] !text-white' : '!bg-[#212121] !text-white'}`} hidden={!session?.user} direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" sx={{ position: 'fixed', top: 100, left: 10, zIndex: 9999, padding: 1, borderRadius: 2, boxShadow: 3 }}>
+			<Stack className={`${mode === 'dark' ? '!bg-[#3c4148] !text-white' : '!bg-[#212121] !text-white'}`} hidden={!session?.user} direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" sx={{ position: 'fixed', top: 100, left: 10, zIndex:9999, padding: 1, borderRadius: 2, boxShadow: 3 }}>
 				<Tooltip title="Save family tree to database" arrow>
 					<IconButton color="inherit" onClick={saveTreeToDB}> <SaveIcon /> </IconButton>
 				</Tooltip>
