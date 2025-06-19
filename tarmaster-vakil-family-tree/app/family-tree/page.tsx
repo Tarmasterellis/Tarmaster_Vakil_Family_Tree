@@ -19,28 +19,59 @@ import DialogActions from '@mui/material/DialogActions';
 import RefreshIcon from '@mui/icons-material/RestartAlt';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CircularProgress from '@mui/material/CircularProgress';
+import UnfoldMoreRoundedIcon from '@mui/icons-material/UnfoldMoreRounded';
+import UnfoldLessRoundedIcon from '@mui/icons-material/UnfoldLessRounded';
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded';
 import React, { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
 
+
 type FamilyDatum = { id: string; rels: { father?: string; mother?: string; spouses?: string[]; children?: string[] }; data: Record<string, string | number>; };
+
+function calculateMaxDepths(data: FamilyDatum[], rootId: string) {
+	const idToNode = new Map<string, FamilyDatum>();
+	data.forEach(node => idToNode.set(node.id, node));
+
+	function getDepth(id: string | undefined, direction: 'up' | 'down'): number {
+		if (!id || !idToNode.has(id)) return 0;
+
+		const node = idToNode.get(id)!;
+		if (direction === 'up') {
+			const fatherDepth = getDepth(node.rels.father, 'up');
+			const motherDepth = getDepth(node.rels.mother, 'up');
+			return 1 + Math.max(fatherDepth, motherDepth);
+		} else {
+			const childDepths = (node.rels.children || []).map(childId => getDepth(childId, 'down'));
+			return childDepths.length ? 1 + Math.max(...childDepths) : 0;
+		}
+	}
+
+	const ancestryDepth = getDepth(rootId, 'up');
+	const progenyDepth = getDepth(rootId, 'down');
+
+	return { ancestryDepth, progenyDepth };
+}
 
 export default function FamilyTree() {
 
-	const key: string = 'color-mode';
 	const { data: session } = useSession();
-	const userName = session?.user?.name;
 	const [saving, setSaving] = useState(false);
 	const [imageUrl, setImageUrl] = useState('');
 	const [uploading, setUploading] = useState(false);
 	const contRef = useRef<HTMLDivElement | null>(null);
 	const [mode, setMode] = useState<string | null>(null);
 	const [rootId, setRootId] = useState<string | null>();
+	const [getProgenyDepth, setProgenyDepth] = useState(8); //Children
+	const [getAncestryDepth, setAncestryDepth] = useState(8); //Parents
 	const [allData, setAllData] = useState<FamilyDatum[]>([]);
 	const [showSavedToast, setShowSavedToast] = useState(false);
 	const [uploadModalOpen, setUploadModalOpen] = useState(false);
 	const createChartRef = useRef<(data: FamilyDatum[]) => void>(() => {});
 	const chartRef = useRef<ReturnType<typeof f3.createChart> | null>(null);
 
+	const key: string = 'color-mode';
+	const userName = session?.user?.name;
+	const { progenyDepth } = calculateMaxDepths(allData, rootId as string);
+	
 	useEffect(() => {
 		if (!allData.length || !userName) return;
 
@@ -112,6 +143,8 @@ export default function FamilyTree() {
 				.setSingleParentEmptyCard(false)
 				.setShowSiblingsOfMain(false)
 				.setOrientationVertical()
+				.setAncestryDepth(getAncestryDepth)
+    			.setProgenyDepth(getProgenyDepth)
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				.setSortChildrenFunction((a: any, b: any) => a.data['birth year'] === b.data['birth year'] ? 0 : a.data['birth year'] > b.data['birth year'] ? 1 : -1);
 
@@ -142,15 +175,16 @@ export default function FamilyTree() {
 			});
 
 			f3Chart.updateTree({ initial: true });
-			f3EditTree.open(f3Chart.getMainDatum());
-			f3Chart.updateTree({ initial: true });
 		};
-	}, [saveTreeToDB, rootId]);
+	}, [saveTreeToDB, rootId, getProgenyDepth, getAncestryDepth]);
 
 	const resetTreeView = () => {
 		if (chartRef.current && rootId) {
 			chartRef.current.updateMainId(rootId);
-			chartRef.current.updateTree();
+			// Update the chart configuration
+			chartRef.current.setProgenyDepth(8);
+			chartRef.current.setAncestryDepth(8);
+			chartRef.current.updateTree({ initial: true });
 		}
 	};
 
@@ -208,7 +242,26 @@ export default function FamilyTree() {
 		};
 	}, [key]);
 
+	const handleChange = (AddSub: string) => {
+		if (!chartRef.current) return;
 
+		const delta = AddSub === 'Add' ? 1 : -1;
+
+		const newProgeny = Math.max(0, getProgenyDepth + delta);
+		const newAncestry = Math.max(0, getAncestryDepth + delta);
+
+		// Update the local state
+		setProgenyDepth(newProgeny);
+		setAncestryDepth(newAncestry);
+
+		// Update the chart configuration
+		chartRef.current.setProgenyDepth(newProgeny);
+		chartRef.current.setAncestryDepth(newAncestry);
+
+		// Redraw the chart
+		chartRef.current.updateTree({ initial: true });
+
+	};
 	return (
 		<>
 			<div className="f3 f3-cont" id="FamilyChart" ref={contRef}></div>
@@ -224,6 +277,14 @@ export default function FamilyTree() {
 
 				<Tooltip title="Reset view to root person" arrow>
 					<IconButton color="inherit" onClick={resetTreeView}> <RefreshIcon /> </IconButton>
+				</Tooltip>
+
+				<Tooltip title={`Add Ancestors & Children levels by 1)`} arrow>
+					<IconButton color="inherit" onClick={() => handleChange('Add') } disabled={ getAncestryDepth >= 8 || getProgenyDepth >= progenyDepth }> <UnfoldMoreRoundedIcon /> </IconButton> 
+				</Tooltip>
+
+				<Tooltip title={`Remove Ancestors & Children levels by 1)`} arrow>
+					<IconButton color="inherit" onClick={() => handleChange('Sub') } disabled={ getAncestryDepth <= 0 || getProgenyDepth <= 0 }> <UnfoldLessRoundedIcon /> </IconButton>
 				</Tooltip>
 			</Stack>
 
