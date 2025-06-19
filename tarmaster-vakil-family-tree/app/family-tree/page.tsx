@@ -1,54 +1,92 @@
 'use client';
 
 import f3 from 'family-chart';
+import Menu from '@mui/material/Menu';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import Tooltip from '@mui/material/Tooltip';
+import Divider from '@mui/material/Divider';
 import { useSession } from "next-auth/react";
+import MenuItem from '@mui/material/MenuItem';
 import 'family-chart/styles/family-chart.css';
 import Snackbar from '@mui/material/Snackbar';
 import SaveIcon from '@mui/icons-material/Save';
 import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
+import ListSubheader from '@mui/material/ListSubheader';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import RefreshIcon from '@mui/icons-material/RestartAlt';
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CircularProgress from '@mui/material/CircularProgress';
 import UnfoldMoreRoundedIcon from '@mui/icons-material/UnfoldMoreRounded';
 import UnfoldLessRoundedIcon from '@mui/icons-material/UnfoldLessRounded';
+import { getComprehensiveRelationships } from '@/lib/helper/relationships';
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded';
 import React, { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
 
 
 type FamilyDatum = { id: string; rels: { father?: string; mother?: string; spouses?: string[]; children?: string[] }; data: Record<string, string | number>; };
 
-function calculateMaxDepths(data: FamilyDatum[], rootId: string) {
+function getGenerationalMap(data: FamilyDatum[], rootId: string) {
 	const idToNode = new Map<string, FamilyDatum>();
 	data.forEach(node => idToNode.set(node.id, node));
 
-	function getDepth(id: string | undefined, direction: 'up' | 'down'): number {
-		if (!id || !idToNode.has(id)) return 0;
+	const generations = new Map<number, FamilyDatum[]>();
+	const visited = new Set<string>();
 
-		const node = idToNode.get(id)!;
-		if (direction === 'up') {
-			const fatherDepth = getDepth(node.rels.father, 'up');
-			const motherDepth = getDepth(node.rels.mother, 'up');
-			return 1 + Math.max(fatherDepth, motherDepth);
-		} else {
-			const childDepths = (node.rels.children || []).map(childId => getDepth(childId, 'down'));
-			return childDepths.length ? 1 + Math.max(...childDepths) : 0;
+	const queue: { id: string; level: number }[] = [{ id: rootId, level: 0 }];
+
+	while (queue.length) {
+		const { id, level } = queue.shift()!;
+		const node = idToNode.get(id);
+		if (!node) continue;
+
+		const uniqueKey = `${id}-${level}`;
+		if (visited.has(uniqueKey)) continue;
+		visited.add(uniqueKey);
+
+		if (!generations.has(level)) generations.set(level, []);
+		generations.get(level)!.push(node);
+
+		// Parents (level - 1)
+		if (node.rels.father) queue.push({ id: node.rels.father, level: level - 1 });
+		if (node.rels.mother) queue.push({ id: node.rels.mother, level: level - 1 });
+
+		// Children (level + 1)
+		(node.rels.children || []).forEach(childId => {
+			queue.push({ id: childId, level: level + 1 });
+		});
+
+		// Spouses (same level)
+		(node.rels.spouses || []).forEach(spouseId => {
+			queue.push({ id: spouseId, level });
+		});
+
+		// Siblings (same level)
+		const father = node.rels.father;
+		const mother = node.rels.mother;
+
+		// Collect siblings by checking father's or mother's children
+		if (father || mother) {
+			const siblingParent = idToNode.get(father as string || mother as string);
+			if (siblingParent) {
+				const siblingIds = siblingParent.rels.children || [];
+				siblingIds.forEach(siblingId => {
+					if (siblingId !== id) {
+						queue.push({ id: siblingId, level });
+					}
+				});
+			}
 		}
 	}
 
-	const ancestryDepth = getDepth(rootId, 'up');
-	const progenyDepth = getDepth(rootId, 'down');
-
-	return { ancestryDepth, progenyDepth };
+	return generations;
 }
 
 export default function FamilyTree() {
@@ -65,21 +103,30 @@ export default function FamilyTree() {
 	const [allData, setAllData] = useState<FamilyDatum[]>([]);
 	const [showSavedToast, setShowSavedToast] = useState(false);
 	const [uploadModalOpen, setUploadModalOpen] = useState(false);
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const createChartRef = useRef<(data: FamilyDatum[]) => void>(() => {});
 	const chartRef = useRef<ReturnType<typeof f3.createChart> | null>(null);
+	const [generationalMap, setGenerationalMap] = useState<Map<number, FamilyDatum[]>>(new Map());
 
+	const handlePersonSelect = (id: string) => {
+		setRootId(id);
+		closeMenu();
+	};
+	
 	const key: string = 'color-mode';
 	const userName = session?.user?.name;
-	const { progenyDepth } = calculateMaxDepths(allData, rootId as string);
+
+	const openMenu = (event: React.MouseEvent<HTMLButtonElement>) => setAnchorEl(event.currentTarget);
+	const closeMenu = () => setAnchorEl(null);
 	
 	useEffect(() => {
-		if (!allData.length || !userName) return;
+		if (!allData.length || !userName || rootId) return;
 
 		const userFirstName = userName.split(' ')[0].toLowerCase();
 		const match = allData.find(data => data?.data && data.data['first name']?.toString().toLowerCase() === userFirstName);
 
 		setRootId(match?.id || 'cmbt2jp7c0003z30vy8mlq737');
-	}, [allData, userName]);
+	}, [allData, userName, rootId]);
 
 	const saveTreeToDB = useCallback(async () => {
 		if (!chartRef.current) return;
@@ -131,6 +178,7 @@ export default function FamilyTree() {
 						Address: `🏠 ${d.data.address || ''}`,
 						DOD: `🪦 ${dod}`,
 						Occupation: `💼 ${d.data.occupation || ''}`,
+						Relationship: `👪 ${getComprehensiveRelationships(data as FamilyDatum[], rootId as string, d.id)}`,
 					},
 				};
 			});
@@ -151,13 +199,12 @@ export default function FamilyTree() {
 			chartRef.current = f3Chart;
 
 			const f3Card = f3Chart.setCard(f3.CardHtml)
-				.setCardDisplay([ ['Name'], ['Phone'], ['Email'], ['DOB'], ['Marriage'], ['Address'], ['DOD'], ['Occupation'] ])
+				.setCardDisplay([ ['Name'], ['Phone'], ['Email'], ['DOB'], ['Marriage'], ['Address'], ['DOD'], ['Occupation'], ['Relationship'] ])
 				.setCardDim({ width: 500, height: 300, img_width: 250, img_height: 280 })
 				.setMiniTree(true)
 				.setStyle('imageRect')
 				.setOnHoverPathToMain();
 
-			console.log(rootId);
 			f3Chart.updateMainId(rootId);
 			// setRootId('cmbt2jp7c0003z30vy8mlq737');
 
@@ -262,6 +309,24 @@ export default function FamilyTree() {
 		chartRef.current.updateTree({ initial: true });
 
 	};
+
+	useEffect(() => {
+		if (allData.length && rootId) {
+			setGenerationalMap(getGenerationalMap(allData, rootId));
+			// Redraw the chart
+			chartRef.current.updateTree({ initial: true });
+		}
+	}, [allData, rootId]);
+
+	useEffect(() => {
+		if (allData.length && rootId && createChartRef.current) {
+			createChartRef.current(allData); // Recreate chart with updated relationships
+			// Redraw the chart
+			chartRef.current.updateTree({ initial: true });
+		}
+	}, [rootId, allData]);
+
+
 	return (
 		<>
 			<div className="f3 f3-cont" id="FamilyChart" ref={contRef}></div>
@@ -280,12 +345,32 @@ export default function FamilyTree() {
 				</Tooltip>
 
 				<Tooltip title={`Add Ancestors & Children levels by 1)`} arrow>
-					<IconButton color="inherit" onClick={() => handleChange('Add') } disabled={ getAncestryDepth >= 8 || getProgenyDepth >= progenyDepth }> <UnfoldMoreRoundedIcon /> </IconButton> 
+					<IconButton color="inherit" onClick={() => handleChange('Add') } disabled={ getAncestryDepth >= 8 || getProgenyDepth >= 8 }> <UnfoldMoreRoundedIcon /> </IconButton> 
 				</Tooltip>
 
 				<Tooltip title={`Remove Ancestors & Children levels by 1)`} arrow>
 					<IconButton color="inherit" onClick={() => handleChange('Sub') } disabled={ getAncestryDepth <= 0 || getProgenyDepth <= 0 }> <UnfoldLessRoundedIcon /> </IconButton>
 				</Tooltip>
+				<Tooltip title="Select a person to view from their perspective" arrow>
+					<IconButton color="inherit" onClick={openMenu}> <PeopleAltIcon /> </IconButton>
+				</Tooltip>
+				<Menu className="hide-scrollbar" anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu} slotProps={{ paper: { style: { maxHeight: '50vh', overflowY: 'auto' } } }}>
+					{
+						Array.from(generationalMap.entries())
+							.sort((a, b) => a[0] - b[0]) // Sort generations top-down
+							.map(([level, people]) => (
+								<div key={level}>
+									<ListSubheader>{level === 0 ? 'Root Generation' : level < 0 ? `Gen ${Math.abs(level)} ↑` : `Gen ${level} ↓`}</ListSubheader>
+										{
+											people
+												.sort((a, b) => String(a.data['first name'] || '').localeCompare(String(b.data['first name'] || '')))
+												.map(person => <MenuItem key={person.id} onClick={() => handlePersonSelect(person.id)}> {(person.data['first name'] || 'Unknown') + ' ' + (person.data['last name'] || '')} </MenuItem> )
+										}
+									<Divider />
+								</div>
+							))
+					}
+				</Menu>
 			</Stack>
 
 			{ saving && <div style={{ position: 'fixed', top: '50%', right: '50%', zIndex: 9999 }}> <CircularProgress size={30} /> </div> }
