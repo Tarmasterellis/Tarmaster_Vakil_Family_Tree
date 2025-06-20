@@ -5,26 +5,32 @@ import Chip from '@mui/material/Chip';
 import Card from '@mui/material/Card';
 import Menu from '@mui/material/Menu';
 import Grid from '@mui/material/Grid';
+import List from '@mui/material/List';
 import Badge from '@mui/material/Badge';
 import Timeline from '@mui/lab/Timeline';
+import Button from '@mui/material/Button';
 import Switch from '@mui/material/Switch';
 import Dialog from '@mui/material/Dialog';
 import Avatar from '@mui/material/Avatar';
-import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
+import ListItem from '@mui/material/ListItem';
 import TimelineDot from '@mui/lab/TimelineDot';
 import CardMedia from '@mui/material/CardMedia';
-import TimelineItem from '@mui/lab/TimelineItem';
 import { useTheme } from '@mui/material/styles';
+import TimelineItem from '@mui/lab/TimelineItem';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
+import AvatarGroup from '@mui/material/AvatarGroup';
 import CardContent from '@mui/material/CardContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 import TimelineContent from '@mui/lab/TimelineContent';
+import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import ListSubheader from '@mui/material/ListSubheader';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import ListItemAvatar from '@mui/material/ListItemAvatar';
 import TimelineConnector from '@mui/lab/TimelineConnector';
 import TimelineSeparator from '@mui/lab/TimelineSeparator';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -61,7 +67,7 @@ export const Notifications = () => {
 	const [getData, setData] = useState<FamilyDatum[]>([]);
 	const [timelineOpen, setTimelineOpen] = useState(false);
 	const [showNext7Days, setShowNext7Days] = useState(false);
-	const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+	const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedPeople, setSelectedPeople] = useState<FamilyDatum[]>([]);
 	const [selectedNotification, setSelectedNotification] = useState<{ type: NotificationType; extra: string; } | null>(null);
@@ -204,59 +210,87 @@ export const Notifications = () => {
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const renderCard = (n: any, i: any) => {
-		return n.type === 'birthday'
+		return n.type === 'birthday' || n.type === 'death'
 		?
 			i % 2 === 0
 			?
-				<Card sx={{ maxWidth: 350, height: 150, p: 0, display: 'flex', alignItems: 'stretch', bgcolor: '#e8f5e9', color: '#1b5e20' }}>
-		 			<CardContent sx={{ flex: '1 0 auto' }}>
-						<Chip label={`Date: ${n.people[0]['data']['DOB']}`} size="small" sx={{ mt: 0.5, bgcolor: '#43a047', color: '#fff' }} />
+				<Card className={`${isMobile ? '!max-w-[100%]' : 'max-w-[350px]'} p-0 h-[150px] flex items-center ${n.type === 'birthday' ? '!bg-[#e8f5e9] !text-[#1b5e20]' : '!bg-[#fce4ec] !text-[#880e4f]'}`}>
+		 			<CardContent sx={{ flex: '1 1 auto' }}>
+						<Chip label={`Date: ${n.people[0]['data']['DOB']}`} size="small" sx={{ mt: 0.5, bgcolor: n.type === 'birthday' ? '#43a047' : '#ad1457', color: '#fff' }} />
 		 				<Typography component="div" variant="subtitle1">{n.label}</Typography>
-		 				<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: '#43a047', color: '#fff' }} />
+		 				<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: n.type === 'birthday' ? '#43a047' : '#ad1457', color: '#fff' }} />
 		 			</CardContent>
-		 			<CardMedia component="img" sx={{ width: 151 }} image={n.people[0]?.data.avatar as string} alt={n.label} />
+		 			<CardMedia className={`object-cover`} component="img" sx={{ width: 151 }} image={n.people[0]?.data.avatar as string} alt={n.label} />
 		 		</Card>
 			:
-				<Card sx={{ maxWidth: 350, height: 150, p: 0, display: 'flex', alignItems: 'stretch', bgcolor: '#e8f5e9', color: '#1b5e20' }}>
-					<CardMedia component="img" sx={{ width: 151 }} image={n.people[0]?.data.avatar as string} alt={n.label} />
-					<CardContent sx={{ flex: '1 1' }}>
-						<Chip label={`Date: ${n.people[0]['data']['DOB']}`} size="small" sx={{ mt: 0.5, bgcolor: '#43a047', color: '#fff' }} />
+				<Card className={`${isMobile ? '!max-w-[100%]' : 'max-w-[350px]'} p-0 h-[150px] flex items-center ${n.type === 'birthday' ? '!bg-[#e8f5e9] !text-[#1b5e20]' : '!bg-[#fce4ec] !text-[#880e4f]'}`}>
+					<CardMedia className={`object-cover`} component="img" sx={{ width: 151 }} image={n.people[0]?.data.avatar as string} alt={n.label} />
+					<CardContent sx={{ flex: '1 1 auto' }}>
+						<Chip label={`Date: ${n.people[0]['data']['DOB']}`} size="small" sx={{ mt: 0.5, bgcolor: n.type === 'birthday' ? '#43a047' : '#ad1457', color: '#fff' }} />
 						<Typography component="div" variant="subtitle1">{n.label}</Typography>
-						<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: '#43a047', color: '#fff' }} />
+						<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: n.type === 'birthday' ? '#43a047' : '#ad1457', color: '#fff' }} />
 					</CardContent>
 				</Card>
 		:
-			n.type === 'anniversary'
-			?
-				<Card sx={{ maxWidth: 350, height: 150, p: 0, display: 'flex', alignItems: 'stretch', bgcolor: '#FFF3e0', color: '#6D4C41' }}>
-		 			<div style={{ position: 'relative', width: '200px', height: '100%' }}>
-		 				<Image src={n.people[0]?.data.avatar as string} sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" alt="Left" fill style={{ objectFit: 'cover' }} />
-		 			</div>
-		 			<CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-		 				<Chip label={`Date: ${n.people[0]['data']['Marriage']}`} size="small" sx={{ mt: 0.5, bgcolor: '#f06292', color: '#fff' }} />
-		 				<Typography variant="subtitle1">{n.label.split('&')[0]}</Typography>
-		 				{" & "}
-		 				<Typography variant="subtitle1">{n.label.split('&')[1]}</Typography>
-		 				<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: '#f06292', color: '#fff' }} />
-		 			</CardContent>
-		 			<div style={{ position: 'relative', width: '200px', height: '100%' }}>
-		 				<Image src={n.people[1]?.data.avatar as string} sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" alt="Right" fill style={{ objectFit: 'cover' }} />
-		 			</div>
-		 		</Card>
-			:
-				n.type === 'death'
-				?
-					<Card sx={{ maxWidth: 350, height: 150, p: 0, display: 'flex', alignItems: 'stretch', bgcolor: '#fce4ec', color: '#880e4f' }}>
-						<CardMedia component="img" sx={{ width: 151 }} image={n.people[0]?.data.avatar as string} alt={n.label} />
-						<CardContent sx={{ flex: '1 0 auto' }}>
-							<Chip label={`Date: ${n.people[0]['data']['DOD']}`} size="small" sx={{ mt: 0.5, bgcolor: '#ad1457', color: '#fff' }} />
-							<Typography component="div" variant="caption" fontWeight="bold">{n.label.split(' ')[0] + ' ' + n.label.split(' ')[1]}</Typography>
-							<Typography component="div" variant="caption" fontWeight="bold">{n.label.split(' ')[2] + ' ' + n.label.split(' ')[3]}</Typography>
-							<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: '#ad1457', color: '#fff' }} />
-						</CardContent>
-					</Card>
-				:
-					null;
+			<Card className={`${isMobile ? '!max-w-[100%]' : ''}`} sx={{ maxWidth: 350, height: 150, p: 0, display: 'flex', alignItems: 'center', bgcolor: '#FFF3e0', color: '#6D4C41' }}>
+				<div style={{ position: 'relative', width: '200px', height: '100%' }}>
+					<Image src={n.people[0]?.data.avatar as string} sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" alt="Left" fill style={{ objectFit: 'cover' }} />
+				</div>
+				<CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+					<Chip label={`Date: ${n.people[0]['data']['Marriage']}`} size="small" sx={{ mt: 0.5, bgcolor: '#f06292', color: '#fff' }} />
+					<Typography variant="subtitle1">{n.label.split('&')[0]}</Typography>
+					{" & "}
+					<Typography variant="subtitle1">{n.label.split('&')[1]}</Typography>
+					<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: '#f06292', color: '#fff' }} />
+				</CardContent>
+				<div style={{ position: 'relative', width: '200px', height: '100%' }}>
+					<Image src={n.people[1]?.data.avatar as string} sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" alt="Right" fill style={{ objectFit: 'cover' }} />
+				</div>
+			</Card>
+	};
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const renderCardM = (n: any) => {
+		return n.type === 'birthday' || n.type === 'death'
+		?
+			<Card onClick={() => openDetails(n) } className={`!max-w-[100%] m-0 p-0 h-[200px] flex items-center ${n.type === 'birthday' ? '!bg-[#e8f5e9] !text-[#1b5e20]' : '!bg-[#fce4ec] !text-[#880e4f]'}`}>
+				<ListItem alignItems="flex-start" className={``}>
+					<ListItemAvatar>
+						<Avatar src={n.people[0]?.data.avatar as string} alt={n.label} />
+					</ListItemAvatar>
+					<ListItemText primary={n.label}
+					secondary={
+						<div className={`flex flex-col gap-1`}>
+							<Chip className={`${ isMobile ? 'text-xs' : ''}`} label={`Date: ${n.people[0]['data']['DOB']}`} size="small" sx={{ mt: 0.5, bgcolor: n.type === 'birthday' ? '#43a047' : '#ad1457', color: '#fff' }} />
+							<Chip className={`${ isMobile ? 'text-xs' : ''}`} label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: n.type === 'birthday' ? '#43a047' : '#ad1457', color: '#fff' }} />
+						</div>
+					} />
+				</ListItem>
+			</Card>
+		:
+			<Card onClick={() => openDetails(n) } className={`${isMobile ? '!max-w-[100%]' : ''}`} sx={{ m: 0, height: 150, p: 0, display: 'flex', alignItems: 'center', bgcolor: '#FFF3e0', color: '#6D4C41' }}>
+				<ListItem alignItems="flex-start">
+					<ListItemAvatar>
+						<AvatarGroup max={2} sx={{ flexDirection: 'column', alignItems: 'flex-start', '& .MuiAvatar-root': { mb: 1 } }}>
+							<Avatar src={n.people[1]?.data.avatar as string} alt={n.label} />
+							<Avatar src={n.people[0]?.data.avatar as string} alt={n.label} />
+						</AvatarGroup>
+					</ListItemAvatar>
+					<ListItemText primary={
+						<div className='flex flex-col gap-1'>
+							<Typography variant="subtitle1">{n.label.split('&')[0]}</Typography>
+							{" & "}
+							<Typography variant="subtitle1">{n.label.split('&')[1]}</Typography>
+						</div>
+					}
+					secondary={
+						<div className={`flex flex-col gap-1`}>
+							<Chip label={`Date: ${n.people[0]['data']['Marriage']}`} size="small" sx={{ mt: 0.5, bgcolor: '#f06292', color: '#fff' }} />
+							<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: '#f06292', color: '#fff' }} />
+						</div>
+					} />
+				</ListItem>
+			</Card>
 	};
 
 
@@ -289,86 +323,96 @@ export const Notifications = () => {
 			</Menu>
 
 			{/* Dialog for details */}
-			<Dialog className={`!m-0 !p-0`} open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="lg" fullScreen={isMobile}>
-				<DialogTitle className={`flex items-center justify-center gap-2 bg-white`} sx={{ backgroundColor: selectedNotification?.type === 'birthday' ? '#e8f5e9' : selectedNotification?.type === 'anniversary' ? '#FFF3e0' : selectedNotification?.type === 'death' ? '#fce4ec' : '' }}>
+			<Dialog className={`!m-0 !p-0`} open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="lg">
+				<DialogTitle className={`flex items-center justify-center gap-2 bg-white border-b-5 ${selectedNotification?.type === 'birthday' ? 'border-[#1b5e20]' : selectedNotification?.type === 'anniversary' ? 'border-[#6D4C41]' : selectedNotification?.type === 'death' ? 'border-[#880e4f]' : ''}`} sx={{ backgroundColor: selectedNotification?.type === 'birthday' ? '#e8f5e9' : selectedNotification?.type === 'anniversary' ? '#FFF3e0' : selectedNotification?.type === 'death' ? '#fce4ec' : '' }}>
 					{selectedNotification?.type === 'birthday' && <div className="flex items-center gap-2 text-[#1b5e20]"> <CakeRoundedIcon fontSize='large' />  Birthday - {selectedNotification.extra} </div>}
 					{selectedNotification?.type === 'anniversary' && <div className="flex items-center gap-2 text-[#6D4C41]"> <FavoriteRoundedIcon fontSize='large' /> Anniversary - {selectedNotification.extra} </div> }
 					{selectedNotification?.type === 'death' && <div className="flex items-center gap-2 text-[#b6306a]"> <FireplaceRoundedIcon fontSize='large' /> Death Anniversary - {selectedNotification.extra} </div>}
 				</DialogTitle>
-				<Divider />
 				<DialogContent dividers sx={{ bgcolor: selectedNotification?.type === 'birthday' ? '#e8f5e9' : selectedNotification?.type === 'anniversary' ? '#FFF3e0' : selectedNotification?.type === 'death' ? '#fce4ec' : '' }}>
 					<Grid container spacing={2}>
-						{selectedPeople.map((person, i) => (
-							<Grid direction={isMobile ? 'column' : 'row'} size={{ xs: 12, sm: selectedPeople.length > 1 ? 6 : 12 }} key={i}>
-								<Card sx={{ p: 2, color: selectedNotification?.type === 'birthday' ? '#e8f5e9' : selectedNotification?.type === 'anniversary' ? '#FFF3e0' : selectedNotification?.type === 'death' ? '#fce4ec' : '', backgroundColor: selectedNotification?.type === 'birthday' ? '#1b5e20' : selectedNotification?.type === 'anniversary' ? '#6D4C41' : selectedNotification?.type === 'death' ? '#880e4f' : '' }}>
-									<Grid direction={isMobile ? 'row' : 'row'} container alignItems="center" spacing={1}>
-										<Avatar src={person.data.avatar as string} sx={{  width: isMobile ? '40vw' : '15vw', height: isMobile ? '40vw' : '32vh', borderRadius: '50%', }} />
-										<Grid container direction={'column'} gap={2}>
-											<Typography variant={'h5'}>{getFullName(person.data)}</Typography>
-											<Typography variant={'body2'}>Birthdate: {person.data['DOB']}</Typography>
-											{ person.data['occupation'] !== '' && <Typography variant={'caption'}>Occupation: {person.data['occupation']}</Typography> }
-											<Typography variant={'body2'}>Address: {person.data['address']}</Typography>
-											{ person.data['phone'] !== '' && <Typography variant={'body2'}>Phone: {person.data['phone']}</Typography> }
-											{ person.data['Marriage'] !== '💍 N/A' && <Typography variant={'body2'}>Marriage: {person.data['Marriage']}</Typography> }
-											{ person.data['DOD'] !== '🪦 N/A' && <Typography variant={'body2'}>Death: {person.data['DOD']}</Typography> }
+						{
+							selectedPeople.map((person, i) => (
+								<Grid direction={isMobile ? 'column' : 'row'} size={{ xs: 12, sm: selectedPeople.length > 1 ? 6 : 12 }} key={i}>
+									<Card sx={{ p: 2, color: selectedNotification?.type === 'birthday' ? '#e8f5e9' : selectedNotification?.type === 'anniversary' ? '#FFF3e0' : selectedNotification?.type === 'death' ? '#fce4ec' : '', backgroundColor: selectedNotification?.type === 'birthday' ? '#1b5e20' : selectedNotification?.type === 'anniversary' ? '#6D4C41' : selectedNotification?.type === 'death' ? '#880e4f' : '' }}>
+										<Grid direction={isMobile ? 'row' : 'row'} container alignItems="center" spacing={1}>
+											<Avatar src={person.data.avatar as string} sx={{  width: isMobile ? '40vw' : '15vw', height: isMobile ? '40vw' : '32vh', borderRadius: '50%', }} />
+											<Grid container direction={'column'} gap={2}>
+												<Typography variant={'h5'}>{getFullName(person.data)}</Typography>
+												<Typography variant={'body2'}>Birthdate: {person.data['DOB']}</Typography>
+												{ person.data['occupation'] !== '' && <Typography variant={'caption'}>Occupation: {person.data['occupation']}</Typography> }
+												<Typography variant={'body2'}>Address: {person.data['address']}</Typography>
+												{ person.data['phone'] !== '' && <Typography variant={'body2'}>Phone: {person.data['phone']}</Typography> }
+												{ person.data['Marriage'] !== '💍 N/A' && <Typography variant={'body2'}>Marriage: {person.data['Marriage']}</Typography> }
+												{ person.data['DOD'] !== '🪦 N/A' && <Typography variant={'body2'}>Death: {person.data['DOD']}</Typography> }
+											</Grid>
 										</Grid>
-									</Grid>
-								</Card>
-							</Grid>
-						))}
+									</Card>
+								</Grid>
+							))
+						}
 					</Grid>
 				</DialogContent>
+				<DialogActions sx={{ bgcolor: selectedNotification?.type === 'birthday' ? '#1b5e20' : selectedNotification?.type === 'anniversary' ? '#6D4C41' : selectedNotification?.type === 'death' ? '#880e4f' : '' }}>
+					<Button onClick={() => setOpenDialog(false)}>Close</Button>
+				</DialogActions>
 			</Dialog>
 
 			{/* Timeline */}
 			<Dialog open={timelineOpen} onClose={() => setTimelineOpen(false)} maxWidth="md" fullWidth>
 				<DialogTitle>📅 Upcoming Events Timeline</DialogTitle>
 				<DialogContent dividers>
-					<Timeline position={ isMobile ? 'right' : undefined }>
+					<Timeline>
 						{
 							notifications.map((n, i) =>
-								<TimelineItem key={i}>
-									{
-										isMobile
-										?
-											null
-										:
-											<TimelineOppositeContent color="text.secondary" sx={{ ...(isMobile ? {} : (i % 2 === 0 ? {position: 'relative', right: '52%' } : {})) }}>
-												{ renderCard(n, i) }
-											</TimelineOppositeContent>
-									}
-
-									<TimelineSeparator>
+								isMobile
+								?
+									<List key={i} sx={{ width: '100%', maxWidth: 360 }}>
+										{renderCardM(n)}
+									</List>
+								:
+									<TimelineItem key={i}>
 										{
-											n.type === 'birthday'
+											isMobile
 											?
-												<TimelineDot color={'primary'} style={{ backgroundColor: '#43a047', color: 'white' }}>
-													<CakeRoundedIcon fontSize="medium" />
-												</TimelineDot>
+												null
 											:
-												n.type === 'anniversary'
+												<TimelineOppositeContent color="text.secondary" sx={{ ...(isMobile ? {} : (i % 2 === 0 ? {position: 'relative', right: '52%' } : {})) }}>
+													{ renderCard(n, i) }
+												</TimelineOppositeContent>
+										}
+
+										<TimelineSeparator>
+											{
+												n.type === 'birthday'
 												?
-													<TimelineDot color={'primary'} style={{ backgroundColor: '#f06292', color: 'white' }}>
-														<FavoriteRoundedIcon fontSize="medium" />
+													<TimelineDot color={'primary'} style={{ backgroundColor: '#43a047', color: 'white' }}>
+														<CakeRoundedIcon fontSize="medium" />
 													</TimelineDot>
 												:
-													n.type === 'death'
+													n.type === 'anniversary'
 													?
-														<TimelineDot color={'primary'} style={{ backgroundColor: '#ad1457', color: 'white' }}>
-															<FireplaceRoundedIcon fontSize="medium" />
+														<TimelineDot color={'primary'} style={{ backgroundColor: '#f06292', color: 'white' }}>
+															<FavoriteRoundedIcon fontSize="medium" />
 														</TimelineDot>
 													:
-														<TimelineDot color={'primary'}>
-															<ErrorIconRounded fontSize="medium" />
-														</TimelineDot>
-										}
-										{ i < notifications.length - 1 && <TimelineConnector className="h-[5vh]" /> }
-									</TimelineSeparator>
+														n.type === 'death'
+														?
+															<TimelineDot color={'primary'} style={{ backgroundColor: '#ad1457', color: 'white' }}>
+																<FireplaceRoundedIcon fontSize="medium" />
+															</TimelineDot>
+														:
+															<TimelineDot color={'primary'}>
+																<ErrorIconRounded fontSize="medium" />
+															</TimelineDot>
+											}
+											{ i < notifications.length - 1 && <TimelineConnector className="h-[5vh]" /> }
+										</TimelineSeparator>
 
-									<TimelineContent sx={{ cursor: 'pointer',  backgroundColor: n.diff === 0 ? n.type === 'birthday' ? 'rgba(25, 118, 210, 0.1)' : 'rgba(156, 39, 176, 0.1)' : 'transparent', borderRadius: 2, ...(isMobile ? {} : (i % 2 === 1 ? {position: 'relative', right: '52%' } : {})) }} onClick={() => openDetails({ people: n.people, type: n.type, extra: n.extra })}>
-										{ renderCard(n, i) }
-									</TimelineContent>
-								</TimelineItem>
+										<TimelineContent sx={{ cursor: 'pointer',  backgroundColor: n.diff === 0 ? n.type === 'birthday' ? 'rgba(25, 118, 210, 0.1)' : 'rgba(156, 39, 176, 0.1)' : 'transparent', borderRadius: 2, ...(isMobile ? {} : (i % 2 === 1 ? {position: 'relative', right: '52%' } : {})) }} onClick={() => openDetails({ people: n.people, type: n.type, extra: n.extra })}>
+											{ renderCard(n, i) }
+										</TimelineContent>
+									</TimelineItem>
 							)
 						}
 					</Timeline>
