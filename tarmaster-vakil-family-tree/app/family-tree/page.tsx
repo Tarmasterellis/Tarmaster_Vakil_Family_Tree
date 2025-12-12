@@ -17,6 +17,7 @@ import CardMedia from '@mui/material/CardMedia';
 import SpeedDial from '@mui/material/SpeedDial';
 import SaveIcon from '@mui/icons-material/Save';
 import TextField from '@mui/material/TextField';
+import Accordion from '@mui/material/Accordion';
 import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import CardContent from '@mui/material/CardContent';
@@ -35,7 +36,7 @@ import UnfoldMoreRoundedIcon from '@mui/icons-material/UnfoldMoreRounded';
 import UnfoldLessRoundedIcon from '@mui/icons-material/UnfoldLessRounded';
 import { getComprehensiveRelationships } from '@/lib/helper/relationships';
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded';
-import React, { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useLayoutEffect, useMemo } from 'react';
 
 
 type FamilyDatum = { id: string; rels: { parents?: string[]; father?: string; mother?: string; spouses?: string[]; children?: string[] }; data: Record<string, string | number>; };
@@ -122,6 +123,42 @@ export default function FamilyTree() {
 		finally { setSaving(false); }
 	}, []);
 
+	const processedData = useMemo(() => {
+		if (!rootId || !allData.length) return [];
+
+		const formatDate = (day?: string, month?: string, year?: string) => [day, month, year].filter(Boolean).join('-') || 'N/A';
+
+		return allData.map(d => {
+			const fullName = `${d.data['first name'] || ''} ${d.data['last name'] || ''}`.trim();
+			const dob = formatDate(d.data['birth date'].toString(), d.data['birth month'].toString(), d.data['birth year'].toString());
+			const marriage = formatDate(d.data['marriage date'].toString(), d.data['marriage month'].toString(), d.data['marriage year'].toString());
+			const dod = formatDate(d.data['death date'].toString(), d.data['death month'].toString(), d.data['death year'].toString());
+
+			return {
+				...d,
+				data: {
+					...d.data,
+					Name: `👤 ${fullName}`,
+					Email: `✉️ ${d.data.email || ''}`,
+					Phone: `📞 ${d.data.phone || ''}`,
+					DOB: `🎂 ${dob}`,
+					Marriage: `💍 ${marriage}`,
+					Address: `🏠 ${d.data.address || ''}`,
+					DOD: `🪦 ${dod}`,
+					Occupation: `💼 ${d.data.occupation || ''}`,
+					Relationship: `👪 ${getComprehensiveRelationships(allData, rootId, d.id)}`,
+				},
+			};
+		});
+	}, [rootId, allData]);
+
+	useEffect(() => {
+		if (processedData.length && createChartRef.current) {
+			createChartRef.current(processedData);
+			chartRef.current?.updateTree({ initial: true });
+		}
+	}, [processedData]);
+
 	useEffect(() => {
 		createChartRef.current = (data: FamilyDatum[]) => {
 			const formatDate = (day?: string, month?: string, year?: string) => { return [day, month, year].filter(Boolean).join('-') || 'N/A'; };
@@ -149,7 +186,7 @@ export default function FamilyTree() {
 			});
 
 			const f3Chart = f3
-				.createChart('#FamilyChart', processed)
+				.createChart('#FamilyChart', data)
 				.setTransitionTime(1000)
 				.setCardXSpacing(600)
 				.setCardYSpacing(600)
@@ -164,7 +201,7 @@ export default function FamilyTree() {
 			chartRef.current = f3Chart;
 
 			const f3Card = f3Chart.setCard(f3.CardHtml)
-				.setCardDisplay([ ['Name'], ['Phone'], ['Email'], ['DOB'], ['Marriage'], ['Address'], ['DOD'], ['Occupation'] ])
+				.setCardDisplay([ ['Name'], ['Phone'], ['Email'], ['DOB'], ['Marriage'], ['Address'], ['DOD'], ['Occupation'], ['Relationship'] ])
 				.setCardDim({ width: 500, height: 300, img_width: 250, img_height: 280 })
 				.setMiniTree(true)
 				.setStyle('imageRect')
@@ -186,7 +223,7 @@ export default function FamilyTree() {
 
 			f3Chart.updateTree({ initial: true });
 		};
-	}, [saveTreeToDB, rootId, getProgenyDepth, getAncestryDepth]);
+	}, [saveTreeToDB, getProgenyDepth, getAncestryDepth]);
 
 	const resetTreeView = () => {
 		if (chartRef.current && rootId) {
@@ -335,6 +372,14 @@ export default function FamilyTree() {
 				<SpeedDialAction onClick={() => setOpen(true)} icon={<PeopleAltIcon />} tooltipTitle={`Select a person to view from their perspective`} />
 			</SpeedDial>
 
+			<SpeedDial ariaLabel="SpeedDial basic example" sx={{ position: 'absolute', bottom: 16, right: 16 }} icon={<SpeedDialIcon />} title="Family Tree Actions">
+				<SpeedDialAction onClick={saveTreeToDB} icon={<SaveIcon />} tooltipTitle={`Save family tree to database`} />
+				<SpeedDialAction onClick={() => setUploadModalOpen(true)} icon={<CloudUploadRoundedIcon />} tooltipTitle={`Upload an avatar image`} />
+				<SpeedDialAction onClick={resetTreeView} icon={<RefreshIcon />} tooltipTitle={`Reset view to root person`} />
+				<SpeedDialAction FabProps={{ disabled: getAncestryDepth >= 8 || getProgenyDepth >= 8 }} onClick={() => handleChange('Add')} icon={<UnfoldMoreRoundedIcon />} tooltipTitle={`Add Ancestors & Children levels by 1)`} />
+				<SpeedDialAction FabProps={{ disabled: getAncestryDepth <= 0 || getProgenyDepth <= 0 }} onClick={() => handleChange('Sub')} icon={<UnfoldLessRoundedIcon />} tooltipTitle={`Remove Ancestors & Children levels by 1)`} />
+				<SpeedDialAction onClick={() => setOpen(true)} icon={<PeopleAltIcon />} tooltipTitle={`Select a person to view from their perspective`} />
+			</SpeedDial>
 			{ saving && <div style={{ position: 'fixed', top: '50%', right: '50%', zIndex: 9999 }}> <CircularProgress size={30} /> </div> }
 
 			<Snackbar open={showSavedToast} autoHideDuration={3000} onClose={() => setShowSavedToast(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
