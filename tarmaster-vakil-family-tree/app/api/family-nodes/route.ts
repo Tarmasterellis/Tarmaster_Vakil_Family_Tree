@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
 	const reverseRelsQueue: {
 		nodeId: string;
 		rels: {
+			parents?: string[];
 			father?: string;
 			mother?: string;
 			spouses?: string[];
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
 
 		// Only allow rels that point to *valid* nodes
 		const cleanedRels = {
+			...(rels.parents && Array.isArray(rels.parents) ? { parents: rels.parents.filter((pid: string) => validNodeIds.has(pid)) } : {}),
 			...(rels.father && validNodeIds.has(rels.father) ? { father: rels.father } : {}),
 			...(rels.mother && validNodeIds.has(rels.mother) ? { mother: rels.mother } : {}),
 			...(Array.isArray(rels.spouses)
@@ -90,7 +92,7 @@ export async function POST(req: NextRequest) {
 }
 
 
-async function applyReverseRelationships(nodeId: string, rels: { father?: string; mother?: string; spouses?: string[]; children?: string[] }) {
+async function applyReverseRelationships(nodeId: string, rels: { parents?: string[]; father?: string; mother?: string; spouses?: string[]; children?: string[] }) {
 	if (!nodeId) return;
 
 	// Add this node as a child to father & mother
