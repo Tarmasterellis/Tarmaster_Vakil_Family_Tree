@@ -15,3 +15,5 @@ body { background: var(--background); color: var(--foreground); font-family: Ari
 .f3-delete-btn { display: none !important; }
 
 .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+#f3Canvas #htmlSvg:not(:first-of-type) { display: none !important; }
