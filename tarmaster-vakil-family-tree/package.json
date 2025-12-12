@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "prisma generate --no-engine && next build",
     "postinstall": "prisma generate",
-    "start": "prisma generate --no-engine && next build && next start",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
