@@ -17,7 +17,6 @@ import CardMedia from '@mui/material/CardMedia';
 import SpeedDial from '@mui/material/SpeedDial';
 import SaveIcon from '@mui/icons-material/Save';
 import TextField from '@mui/material/TextField';
-import Accordion from '@mui/material/Accordion';
 import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import CardContent from '@mui/material/CardContent';
