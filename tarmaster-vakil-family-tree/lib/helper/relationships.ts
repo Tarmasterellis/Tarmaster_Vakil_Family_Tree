@@ -181,6 +181,214 @@ export function getComprehensiveRelationships(data: FamilyDatum[], rootId: strin
 			queue.push({ id: n.id, path: [...path, n.label] });
 		}
 	}
-
 	return [...new Set(relations)].join(', ');
 }
+
+
+
+
+// /* eslint-disable @typescript-eslint/no-explicit-any */
+
+// export type FamilyDatum = {
+//   id: string;
+//   data: Record<string, any>;
+//   rels: {
+//     father?: string;
+//     mother?: string;
+//     spouses?: string[];
+//     children?: string[];
+//   };
+// };
+
+// /* -------------------------------------------------
+//    HELPERS
+// ------------------------------------------------- */
+
+// function genderOf(n?: FamilyDatum): 'M' | 'F' {
+//   return n?.data?.gender?.toString().toUpperCase() === 'F' ? 'F' : 'M';
+// }
+
+// function ordinal(n: number): string {
+//   if (n % 10 === 1 && n % 100 !== 11) return `${n}st`;
+//   if (n % 10 === 2 && n % 100 !== 12) return `${n}nd`;
+//   if (n % 10 === 3 && n % 100 !== 13) return `${n}rd`;
+//   return `${n}th`;
+// }
+
+// /* -------------------------------------------------
+//    DIRECT LINE LABELS
+// ------------------------------------------------- */
+
+// function ancestorLabel(gen: number, g: 'M' | 'F'): string {
+//   if (gen === 1) return g === 'M' ? 'Father' : 'Mother';
+//   if (gen === 2) return g === 'M' ? 'Grandfather' : 'Grandmother';
+//   const k = gen - 2;
+//   return k === 1
+//     ? `Great ${g === 'M' ? 'Grandfather' : 'Grandmother'}`
+//     : `${ordinal(k)} Great ${g === 'M' ? 'Grandfather' : 'Grandmother'}`;
+// }
+
+// function descendantLabel(gen: number, g: 'M' | 'F'): string {
+//   if (gen === 1) return g === 'M' ? 'Son' : 'Daughter';
+//   if (gen === 2) return g === 'M' ? 'Grandson' : 'Granddaughter';
+//   const k = gen - 2;
+//   return k === 1
+//     ? `Great ${g === 'M' ? 'Grandson' : 'Granddaughter'}`
+//     : `${ordinal(k)} Great ${g === 'M' ? 'Grandson' : 'Granddaughter'}`;
+// }
+
+// /* -------------------------------------------------
+//    MAIN ENGINE
+// ------------------------------------------------- */
+
+// export function getComprehensiveRelationships(
+//   data: FamilyDatum[],
+//   rootId: string,
+//   targetId: string
+// ): string {
+//   if (rootId === targetId) return 'Self';
+
+//   const byId = new Map(data.map(d => [d.id, d]));
+//   const root = byId.get(rootId);
+//   const target = byId.get(targetId);
+//   if (!root || !target) return 'Unknown';
+
+//   const rootParents = new Set([root.rels.father, root.rels.mother].filter(Boolean));
+//   const targetParents = new Set([target.rels.father, target.rels.mother].filter(Boolean));
+
+//   const rootGender = genderOf(root);
+//   const targetGender = genderOf(target);
+
+//   /* -------------------------------------------------
+//      1. DIRECT PARENT / CHILD
+//   ------------------------------------------------- */
+
+//   if (targetParents.has(rootId)) {
+//     return `${descendantLabel(1, targetGender)} of ${root.data['first name']}`;
+//   }
+
+//   if (rootParents.has(targetId)) {
+//     return `${ancestorLabel(1, targetGender)} of ${root.data['first name']}`;
+//   }
+
+//   /* -------------------------------------------------
+//      2. SIBLINGS
+//   ------------------------------------------------- */
+
+//   for (const p of rootParents) {
+//     if (p && targetParents.has(p)) {
+//       return `${targetGender === 'M' ? 'Brother' : 'Sister'} of ${root.data['first name']}`;
+//     }
+//   }
+
+//   /* -------------------------------------------------
+//      3. UNCLE / AUNT
+//      (parent’s sibling)
+//   ------------------------------------------------- */
+
+//   for (const p of rootParents) {
+//     const parent = p ? byId.get(p) : null;
+//     if (!parent) continue;
+
+//     const parentParents = new Set([parent.rels.father, parent.rels.mother].filter(Boolean));
+//     for (const gp of parentParents) {
+//       const siblings = data.filter(
+//         d =>
+//           d.id !== parent.id &&
+//           [d.rels.father, d.rels.mother].some(x => x === gp)
+//       );
+
+//       if (siblings.some(s => s.id === targetId)) {
+//         return `${targetGender === 'M' ? 'Uncle' : 'Aunt'} of ${root.data['first name']}`;
+//       }
+//     }
+//   }
+
+//   /* -------------------------------------------------
+//      4. COUSINS
+//      (child of parent’s sibling)
+//   ------------------------------------------------- */
+
+//   for (const p of rootParents) {
+//     const parent = p ? byId.get(p) : null;
+//     if (!parent) continue;
+
+//     const parentParents = new Set([parent.rels.father, parent.rels.mother].filter(Boolean));
+
+//     const parentSiblings = data.filter(
+//       d =>
+//         d.id !== parent.id &&
+//         [d.rels.father, d.rels.mother].some(x => parentParents.has(x))
+//     );
+
+//     for (const s of parentSiblings) {
+//       if (s.rels.children?.includes(targetId)) {
+//         return `Cousin of ${root.data['first name']}`;
+//       }
+//     }
+//   }
+
+//   /* -------------------------------------------------
+//      5. SPOUSE / IN-LAWS
+//   ------------------------------------------------- */
+
+//   if (root.rels.spouses?.includes(targetId)) {
+//     return `${targetGender === 'M' ? 'Husband' : 'Wife'} of ${root.data['first name']}`;
+//   }
+
+//   for (const s of root.rels.spouses || []) {
+//     if (s === targetId) continue;
+//     const spouse = byId.get(s);
+//     if (!spouse) continue;
+
+//     if (spouse.rels.father === targetId || spouse.rels.mother === targetId) {
+//       return `${targetGender === 'M' ? 'Father' : 'Mother'}-in-law of ${root.data['first name']}`;
+//     }
+
+//     if (spouse.rels.children?.includes(targetId)) {
+//       return `${targetGender === 'M' ? 'Son' : 'Daughter'}-in-law of ${root.data['first name']}`;
+//     }
+//   }
+
+//   /* -------------------------------------------------
+//      6. DEEP ANCESTORS / DESCENDANTS (BFS)
+//   ------------------------------------------------- */
+
+//   const visited = new Set<string>();
+//   const queue: { id: string; depth: number; dir: 'up' | 'down' }[] = [
+//     { id: rootId, depth: 0, dir: 'up' },
+//     { id: rootId, depth: 0, dir: 'down' },
+//   ];
+
+//   while (queue.length) {
+//     const { id, depth, dir } = queue.shift()!;
+//     if (visited.has(id)) continue;
+//     visited.add(id);
+
+//     if (id === targetId && depth > 0) {
+//       const label =
+//         dir === 'up'
+//           ? ancestorLabel(depth, targetGender)
+//           : descendantLabel(depth, targetGender);
+//       return `${label} of ${root.data['first name']}`;
+//     }
+
+//     const n = byId.get(id);
+//     if (!n) continue;
+
+//     if (dir === 'up') {
+//       if (n.rels.father) queue.push({ id: n.rels.father, depth: depth + 1, dir });
+//       if (n.rels.mother) queue.push({ id: n.rels.mother, depth: depth + 1, dir });
+//     } else {
+//       for (const c of n.rels.children || []) {
+//         queue.push({ id: c, depth: depth + 1, dir });
+//       }
+//     }
+//   }
+
+//   /* -------------------------------------------------
+//      FINAL FALLBACK (ACTUALLY RARE NOW)
+//   ------------------------------------------------- */
+
+//   return `Relative of ${root.data['first name']}`;
+// }

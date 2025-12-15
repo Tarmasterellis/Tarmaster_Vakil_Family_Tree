@@ -31,6 +31,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import { normalizeFamilyData } from '@/lib/helper/normalizeFamilyData';
 import UnfoldMoreRoundedIcon from '@mui/icons-material/UnfoldMoreRounded';
 import UnfoldLessRoundedIcon from '@mui/icons-material/UnfoldLessRounded';
 import { getComprehensiveRelationships } from '@/lib/helper/relationships';
@@ -63,7 +64,6 @@ export default function FamilyTree() {
 
 	// Relationship Integration
 	const handleChangeAccordian = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => { setExpanded(isExpanded ? panel : false); };
-	// const handlePersonSelect = (id: string) => { setRootId(id); chartRef.current.updateMainId(id); chartRef.current.updateTree({ initial: true }); setOpen(false); };
 	const handlePersonSelect = (id: string) => {
 		setRootId(id);
 
@@ -77,6 +77,8 @@ export default function FamilyTree() {
 			.setShowSiblingsOfMain(true)      // Mini tree siblings visible
 			.setSingleParentEmptyCard(false); // Show missing parent placeholder
 
+		const newGenMap = getGenerationalMap(allData, id);
+		setGenerationalMap(newGenMap);
 		chartRef.current.updateTree({ initial: false });
 
 		setOpen(false);
@@ -122,41 +124,19 @@ export default function FamilyTree() {
 		finally { setSaving(false); }
 	}, []);
 
-	const processedData = useMemo(() => {
-		if (!rootId || !allData.length) return [];
 
-		const formatDate = (day?: string, month?: string, year?: string) => [day, month, year].filter(Boolean).join('-') || 'N/A';
-
-		return allData.map(d => {
-			const fullName = `${d.data['first name'] || ''} ${d.data['last name'] || ''}`.trim();
-			const dob = formatDate(d.data['birth date'].toString(), d.data['birth month'].toString(), d.data['birth year'].toString());
-			const marriage = formatDate(d.data['marriage date'].toString(), d.data['marriage month'].toString(), d.data['marriage year'].toString());
-			const dod = formatDate(d.data['death date'].toString(), d.data['death month'].toString(), d.data['death year'].toString());
-
-			return {
-				...d,
-				data: {
-					...d.data,
-					Name: `👤 ${fullName}`,
-					Email: `✉️ ${d.data.email || ''}`,
-					Phone: `📞 ${d.data.phone || ''}`,
-					DOB: `🎂 ${dob}`,
-					Marriage: `💍 ${marriage}`,
-					Address: `🏠 ${d.data.address || ''}`,
-					DOD: `🪦 ${dod}`,
-					Occupation: `💼 ${d.data.occupation || ''}`,
-					Relationship: `👪 ${getComprehensiveRelationships(allData, rootId, d.id)}`,
-				},
-			};
-		});
-	}, [rootId, allData]);
-
-	useEffect(() => {
-		if (processedData.length && createChartRef.current) {
-			createChartRef.current(processedData);
-			chartRef.current?.updateTree({ initial: true });
-		}
-	}, [processedData]);
+	// Relationship Integration
+	const relationshipMap = useMemo(() => {
+		if (!rootId) return new Map();
+		console.log('Generating relationship map for rootId:', rootId);
+		console.log('Relationship map generated:', allData.map(d => [d.id, getComprehensiveRelationships(allData, rootId, d.id)]));
+		return new Map(
+			allData.map(d => [
+				d.id,
+				getComprehensiveRelationships(allData, rootId, d.id)
+			])
+		);
+	}, [allData, rootId]);
 
 	useEffect(() => {
 		createChartRef.current = (data: FamilyDatum[]) => {
@@ -179,13 +159,14 @@ export default function FamilyTree() {
 						Address: `🏠 ${d.data.address || ''}`,
 						DOD: `🪦 ${dod}`,
 						Occupation: `💼 ${d.data.occupation || ''}`,
-						Relationship: `👪 ${getComprehensiveRelationships(allData, rootId || 'cmbt2jp7c0003z30vy8mlq737', d.id)}`,
+						// Relationship: `👪 ${getComprehensiveRelationships(allData, rootId || 'cmbt2jp7c0003z30vy8mlq737', d.id)}`,
+						Relationship: `👪 ${relationshipMap.get(d.id) || ''}`,
 					},
 				};
 			});
 
 			const f3Chart = f3
-				.createChart('#FamilyChart', data)
+				.createChart('#FamilyChart', processed)
 				.setTransitionTime(1000)
 				.setCardXSpacing(600)
 				.setCardYSpacing(600)
@@ -241,7 +222,11 @@ export default function FamilyTree() {
 
 		fetch('/api/family-nodes')
 			.then(res => res.json() )
-			.then(data => { createChartRef.current(data); setAllData(data); console.log(data); } )
+			.then(async data => {
+				const normalized = await normalizeFamilyData(data);
+				createChartRef.current(normalized);
+				setAllData(normalized);
+			})
 			.catch(err => {
 				console.error('Failed to load initial data:', err);
 				createChartRef.current([{ id: '0', rels: { parents: [],father: undefined, mother: undefined, spouses: [], children: [] }, data: { "first name": "No Name", "last name": "No Surname", "birthday": 0, "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg", "gender": "", "email": "", "birth date": "", "birth month": "", "birth year": "", "occupation": "", "phone": "", "address": "", "marriage date": "", "marriage month": "", "marriage year": "", "death date": "", "death month": "", "death year": "" } }]);
@@ -361,15 +346,6 @@ export default function FamilyTree() {
 	return (
 		<>
 			<div className="f3 f3-cont" id="FamilyChart" ref={contRef}></div>
-
-			<SpeedDial ariaLabel="SpeedDial basic example" sx={{ position: 'absolute', bottom: 16, right: 16 }} icon={<SpeedDialIcon />} title="Family Tree Actions">
-				<SpeedDialAction onClick={saveTreeToDB} icon={<SaveIcon />} tooltipTitle={`Save family tree to database`} />
-				<SpeedDialAction onClick={() => setUploadModalOpen(true)} icon={<CloudUploadRoundedIcon />} tooltipTitle={`Upload an avatar image`} />
-				<SpeedDialAction onClick={resetTreeView} icon={<RefreshIcon />} tooltipTitle={`Reset view to root person`} />
-				<SpeedDialAction FabProps={{ disabled: getAncestryDepth >= 8 || getProgenyDepth >= 8 }} onClick={() => handleChange('Add')} icon={<UnfoldMoreRoundedIcon />} tooltipTitle={`Add Ancestors & Children levels by 1)`} />
-				<SpeedDialAction FabProps={{ disabled: getAncestryDepth <= 0 || getProgenyDepth <= 0 }} onClick={() => handleChange('Sub')} icon={<UnfoldLessRoundedIcon />} tooltipTitle={`Remove Ancestors & Children levels by 1)`} />
-				<SpeedDialAction onClick={() => setOpen(true)} icon={<PeopleAltIcon />} tooltipTitle={`Select a person to view from their perspective`} />
-			</SpeedDial>
 
 			<SpeedDial ariaLabel="SpeedDial basic example" sx={{ position: 'absolute', bottom: 16, right: 16 }} icon={<SpeedDialIcon />} title="Family Tree Actions">
 				<SpeedDialAction onClick={saveTreeToDB} icon={<SaveIcon />} tooltipTitle={`Save family tree to database`} />
