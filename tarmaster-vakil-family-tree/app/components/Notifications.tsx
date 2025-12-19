@@ -13,7 +13,6 @@ import Switch from '@mui/material/Switch';
 import Dialog from '@mui/material/Dialog';
 import Avatar from '@mui/material/Avatar';
 import MenuItem from '@mui/material/MenuItem';
-import ListItem from '@mui/material/ListItem';
 import TimelineDot from '@mui/lab/TimelineDot';
 import CardMedia from '@mui/material/CardMedia';
 import { useTheme } from '@mui/material/styles';
@@ -24,13 +23,11 @@ import AvatarGroup from '@mui/material/AvatarGroup';
 import CardContent from '@mui/material/CardContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
 import TimelineContent from '@mui/lab/TimelineContent';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import ListSubheader from '@mui/material/ListSubheader';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import ListItemAvatar from '@mui/material/ListItemAvatar';
 import TimelineConnector from '@mui/lab/TimelineConnector';
 import TimelineSeparator from '@mui/lab/TimelineSeparator';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -193,7 +190,7 @@ export const Notifications = () => {
 
 		return (
 			<div>
-				<ListSubheader className={`${mode === 'dark' ? '' : '!bg-[#cecece]'}`}>{label}</ListSubheader>
+				<ListSubheader className={`${mode === 'dark' ? '' : 'bg-[#cecece]!'}`}>{label}</ListSubheader>
 				{
 					filtered.map((n, i) =>
 						<MenuItem className={`flex w-full items-center justify-start gap-3`} key={i} onClick={() => { openDetails(n); closeMenu(); }}>
@@ -215,38 +212,40 @@ export const Notifications = () => {
 		?
 			i % 2 === 0
 			?
-				<Card className={`${isMobile ? '!max-w-[100%]' : 'max-w-[350px]'} p-0 h-[150px] flex items-center ${n.type === 'birthday' ? '!bg-[#e8f5e9] !text-[#1b5e20]' : '!bg-[#fce4ec] !text-[#880e4f]'}`}>
+				<Card className={`${isMobile ? 'max-w-full!' : 'max-w-87.5'} p-0 h-37.5 flex items-center ${n.type === 'birthday' ? 'bg-[#e8f5e9]! text-[#1b5e20]!' : 'bg-[#fce4ec]! text-[#880e4f]!'}`}>
 					<CardContent sx={{ flex: '1 1 auto' }}>
 						<Chip label={`Date: ${n.people[0]['data']['DOB']}`} size="small" sx={{ mt: 0.5, bgcolor: n.type === 'birthday' ? '#43a047' : '#ad1457', color: '#fff' }} />
-						<Typography component="div" variant="subtitle1">{n.label}</Typography>
+						<Typography component="div" variant="subtitle1" sx={{ fontSize: 14 }}>{n.label}</Typography>
 						<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: n.type === 'birthday' ? '#43a047' : '#ad1457', color: '#fff' }} />
 					</CardContent>
-					<CardMedia className={`object-cover`} component="img" sx={{ width: 151 }} image={n.people[0]?.data.avatar as string} alt={n.label} />
+					<CardMedia className={`object-cover max-w-33.5 h-full!`} component="img" image={n.people[0]?.data.avatar as string} alt={n.label} />
 				</Card>
 			:
-				<Card className={`${isMobile ? '!max-w-[100%]' : 'max-w-[350px]'} p-0 h-[150px] flex items-center ${n.type === 'birthday' ? '!bg-[#e8f5e9] !text-[#1b5e20]' : '!bg-[#fce4ec] !text-[#880e4f]'}`}>
-					<CardMedia className={`object-cover`} component="img" sx={{ width: 151 }} image={n.people[0]?.data.avatar as string} alt={n.label} />
+				<Card className={`${isMobile ? 'max-w-full!' : 'max-w-87.5'} p-0 h-37.5 flex items-center ${n.type === 'birthday' ? 'bg-[#e8f5e9]! text-[#1b5e20]!' : 'bg-[#fce4ec]! text-[#880e4f]!'}`}>
+					<CardMedia className={`object-cover max-w-33.5 h-full!`} component="img" image={n.people[0]?.data.avatar as string} alt={n.label} />
 					<CardContent sx={{ flex: '1 1 auto' }}>
 						<Chip label={`Date: ${n.people[0]['data']['DOB']}`} size="small" sx={{ mt: 0.5, bgcolor: n.type === 'birthday' ? '#43a047' : '#ad1457', color: '#fff' }} />
-						<Typography component="div" variant="subtitle1">{n.label}</Typography>
+						<Typography component="div" variant="subtitle1" sx={{ fontSize: 14 }}>{n.label}</Typography>
 						<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: n.type === 'birthday' ? '#43a047' : '#ad1457', color: '#fff' }} />
 					</CardContent>
 				</Card>
 		:
-			<Card className={`${isMobile ? '!max-w-[100%]' : ''}`} sx={{ maxWidth: 350, height: 150, p: 0, display: 'flex', alignItems: 'center', bgcolor: '#FFF3e0', color: '#6D4C41' }}>
-				<div style={{ position: 'relative', width: '200px', height: '100%' }}>
+			<Card className={`${isMobile ? 'max-w-full!' : ''}`} sx={{ height: 150, p: 0, display: 'flex', alignItems: 'center', bgcolor: '#FFF3e0', color: '#6D4C41' }}>
+				{/* <div style={{ position: 'relative', width: '200px', height: '100%' }}>
 					<Image src={n.people[0]?.data.avatar as string} sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" alt="Left" fill style={{ objectFit: 'cover' }} />
-				</div>
-				<CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-					<Chip label={`Date: ${n.people[0]['data']['Marriage']}`} size="small" sx={{ mt: 0.5, bgcolor: '#f06292', color: '#fff' }} />
-					<Typography variant="subtitle1">{n.label.split('&')[0]}</Typography>
-					{" & "}
-					<Typography variant="subtitle1">{n.label.split('&')[1]}</Typography>
-					<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: '#f06292', color: '#fff' }} />
+				</div> */}
+				<CardMedia className={`object-cover max-w-29 -ml-2.5`} component="img" image={n.people[0]?.data.avatar as string} alt={n.label} />
+				<CardContent className='flex! flex-col! justify-center! items-center! -ml-2'>
+					<Chip label={`Date: ${n.people[0]['data']['Marriage']}`} size="small" sx={{ mt: 0.5, bgcolor: '#f06292', color: '#fff', fontSize: 12 }} />
+					<Typography variant="caption" sx={{ fontSize: 12 }}>{n.label.split('&')[0]}</Typography>
+					<Typography variant="caption" sx={{ fontSize: 12 }}>{" & "}</Typography>
+					<Typography variant="caption" sx={{ fontSize: 12 }}>{n.label.split('&')[1]}</Typography>
+					<Chip label={`${getChipLabel(n.diff)} - ${ ((n.extra).split(' ')[0] + ' ' + (Number((n.extra).split(' ')[1]) + 1)).replace('NaN', ' Years') }`} size="small" sx={{ mt: 0.5, bgcolor: '#f06292', color: '#fff', fontSize: 12 }} />
 				</CardContent>
-				<div style={{ position: 'relative', width: '200px', height: '100%' }}>
+				<CardMedia className={`object-cover max-w-29 h-full! -ml-2.5`} component="img" image={n.people[1]?.data.avatar as string} alt={n.label} />
+				{/* <div style={{ position: 'relative', width: '200px', height: '100%' }}>
 					<Image src={n.people[1]?.data.avatar as string} sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" alt="Right" fill style={{ objectFit: 'cover' }} />
-				</div>
+				</div> */}
 			</Card>
 	};
 
@@ -254,7 +253,7 @@ export const Notifications = () => {
 	const renderCardM = (n: any) => {
 		return n.type === 'birthday' || n.type === 'death'
 		?
-			<Card onClick={() => openDetails(n) } className={`!max-w-[100%] m-0 p-0 items-center ${n.type === 'birthday' ? '!bg-[#e8f5e9] !text-[#1b5e20]' : '!bg-[#fce4ec] !text-[#880e4f]'}`}>
+			<Card onClick={() => openDetails(n) } className={`max-w-full! m-0 p-0 items-center ${n.type === 'birthday' ? 'bg-[#e8f5e9]! text-[#1b5e20]!' : 'bg-[#fce4ec]! text-[#880e4f]!'}`}>
 				<CardMedia component="img" image={n.people[0]?.data.avatar as string} alt={n.label} />
 				<CardContent className={`flex flex-col justify-center items-start gap-2`}>
 					<div className={`flex justify-center items-center gap-2`}>
@@ -266,7 +265,7 @@ export const Notifications = () => {
 				</CardContent>
 			</Card>
 		:
-			<Card onClick={() => openDetails(n) } className={`!max-w-[100%] m-0 p-0 items-center !bg-[#FFF3e0] !text-[#6D4C41]`}>
+			<Card onClick={() => openDetails(n) } className={`max-w-full! m-0 p-0 items-center bg-[#FFF3e0]! text-[#6D4C41]!`}>
 				<AvatarGroup spacing="medium">
 					<Avatar sx={{ height: '40vh' }} className={`border-0! w-[51.5%]!`} variant="square" alt={n.label} src={n.people[0]?.data.avatar as string} />
 					<Avatar sx={{ height: '40vh' }} className={`border-0! w-[51.5%]!`} variant="square" alt={n.label} src={n.people[1]?.data.avatar as string} />
@@ -294,12 +293,12 @@ export const Notifications = () => {
 			</IconButton>
 
 			<Menu className="hide-scrollbar" anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu} slotProps={{ paper: { style: { maxHeight: '50vh', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' } } }}>
-				<ListSubheader className={`${mode === 'dark' ? '' : '!bg-[#cecece]'}`}>Filters</ListSubheader>
+				<ListSubheader className={`${mode === 'dark' ? '' : 'bg-[#cecece]!'}`}>Filters</ListSubheader>
 				<FormControlLabel className={`p-3`} control={ <Switch checked={showNext7Days} onChange={() => setShowNext7Days(prev => !prev)} size="small" /> } label="Filter for Only Next 7 Days" sx={{ pl: 2 }} />
 
 				{ notifications.length === 0 && <MenuItem disabled>No notifications</MenuItem> }
 
-				<ListSubheader className={`${mode === 'dark' ? '' : '!bg-[#cecece]'}`}>View in Timeline</ListSubheader>
+				<ListSubheader className={`${mode === 'dark' ? '' : 'bg-[#cecece]!'}`}>View in Timeline</ListSubheader>
 				<MenuItem onClick={() => { setTimelineOpen(true); closeMenu(); }}>
 					<div className={`flex w-full items-center justify-start gap-3`}>
 						<TimelineRoundedIcon fontSize="medium" />
@@ -314,7 +313,7 @@ export const Notifications = () => {
 			</Menu>
 
 			{/* Dialog for details */}
-			<Dialog className={`!m-0 !p-0`} open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm">
+			<Dialog className={`m-0! p-0!`} open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm">
 				<DialogTitle className={`flex items-center justify-center gap-2 bg-white border-b-5 ${selectedNotification?.type === 'birthday' ? 'border-[#1b5e20]' : selectedNotification?.type === 'anniversary' ? 'border-[#6D4C41]' : selectedNotification?.type === 'death' ? 'border-[#880e4f]' : ''}`} sx={{ backgroundColor: selectedNotification?.type === 'birthday' ? '#e8f5e9' : selectedNotification?.type === 'anniversary' ? '#FFF3e0' : selectedNotification?.type === 'death' ? '#fce4ec' : '' }}>
 					{selectedNotification?.type === 'birthday' && <div className="flex items-center gap-2 text-[#1b5e20]"> <CakeRoundedIcon fontSize='large' />  Birthday - {selectedNotification.extra} </div>}
 					{selectedNotification?.type === 'anniversary' && <div className="flex items-center gap-2 text-[#6D4C41]"> <FavoriteRoundedIcon fontSize='large' /> Anniversary - {selectedNotification.extra} </div> }

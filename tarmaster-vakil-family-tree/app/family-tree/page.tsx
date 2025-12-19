@@ -367,7 +367,7 @@ export default function FamilyTree() {
 				<DialogTitle>
 					<div className={`flex flex-row justify-between items-center w-full`}>
 						<Typography variant="h6" component="div"> People According to Generation </Typography>
-						<Avatar onClick={resetTreeViewRoot} className={`${mode === 'dark' ? '' : '!bg-[#2d333a]'} cursor-pointer`}> <RefreshIcon className={`${mode === 'dark' ? '!text-[#ffffff]' : ''}`} /> </Avatar>
+						<Avatar onClick={resetTreeViewRoot} className={`${mode === 'dark' ? '' : 'bg-[#2d333a]!'} cursor-pointer`}> <RefreshIcon className={`${mode === 'dark' ? 'text-[#ffffff]!' : ''}`} /> </Avatar>
 					</div>
 				</DialogTitle>
 				<DialogContent sx={{ maxHeight: '100vh', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -424,7 +424,7 @@ export default function FamilyTree() {
 			<Dialog open={uploadModalOpen} onClose={() => setUploadModalOpen(false)}>
 				<DialogTitle>Upload Avatar to Cloudinary</DialogTitle>
 				<DialogContent>
-					<Button variant="outlined" className={`${mode === 'dark' ? '' : '!text-[#2D333A] !border-1 !border-[#2D333A]'} `} component="label">
+					<Button variant="outlined" className={`${mode === 'dark' ? '' : '!text-[#2D333A]! border! border-[#2D333A]!'} `} component="label">
 						Choose Image
 						<input hidden accept="image/*" type="file" onChange={(e) => handleUpload(e.target.files![0])} />
 					</Button>
